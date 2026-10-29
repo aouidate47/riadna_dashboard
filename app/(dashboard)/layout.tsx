@@ -3,6 +3,8 @@ import { AuthGuard } from "@/components/providers/auth-guard";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 
+export const instant = false;
+
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>

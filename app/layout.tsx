@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Public_Sans } from "next/font/google";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth-provider";
 
-const heading = Bricolage_Grotesque({
+const heading = Fraunces({
   variable: "--font-heading",
   subsets: ["latin"],
 });
 
-const body = Public_Sans({
+const body = Plus_Jakarta_Sans({
   variable: "--font-body",
   subsets: ["latin"],
 });

@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Riadna dashboard
 
-## Getting Started
+A Next.js dashboard for riad owners and staff to manage bookings, rooms, guests, and availability.
 
-First, run the development server:
+## Requirements
+
+- Node.js **20.9 or newer** (Node 20 LTS recommended)
+- npm 10 or newer
+
+Check your versions:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+node -v
+npm -v
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Install and run
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+git clone https://github.com/aouidate47/riadna_dashboard.git
+cd riadna_dashboard
+npm ci
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+The first request compiles routes and can take a while. Later requests are much faster. Use `npm run build` and `npm start` to measure production performance.
 
-To learn more about Next.js, take a look at the following resources:
+## Troubleshooting installs
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`npm ci` installs every dependency, including Next.js. Do not run `npm i next` by itself: it skips the rest of the app's dependencies and leaves the install incomplete.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+If `next` is missing or the install stopped partway through, remove `node_modules`, clear the npm cache, and install again.
 
-## Deploy on Vercel
+PowerShell (Windows):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+Remove-Item -Recurse -Force node_modules
+npm cache clean --force
+npm ci
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+macOS/Linux:
+
+```bash
+rm -rf node_modules
+npm cache clean --force
+npm ci
+```
+
+If installation still fails, check that `node -v` reports 20.9 or newer, then share the full `npm ci` error.
+
+## Demo accounts
+
+All demo accounts use the password `test1234`.
+
+| Role | Email |
+| --- | --- |
+| Owner | `owner@yasmine.ma` |
+| Staff | `staff@yasmine.ma` |
+| Owner | `owner@daranika.ma` |
+| Owner | `owner@riadzitoun.ma` |
+
+The demo account box is shown in development only.
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the development server |
+| `npm run build` | Create a production build |
+| `npm start` | Start the production server |
+| `npm run lint` | Run ESLint |
+| `npm run verify` | Run the data and tenancy checks |
+
+## Stack
+
+Next.js 16, React 19, Tailwind CSS 4, Radix UI, Recharts, and dnd-kit.
