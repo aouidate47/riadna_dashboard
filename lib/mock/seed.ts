@@ -33,8 +33,17 @@ export function buildSeed(now = new Date()) {
     riads.push({ ...cfg.riad });
     const riadRooms: Room[] = cfg.rooms.map((r, i) => {
       const id = `${riadId}_room_${i + 1}`;
-      return { id, riadId, name: r.name, capacity: r.capacity, price: r.price,
-        photos: [1, 2].map((k) => `https://picsum.photos/seed/${id}-${k}/800/600`) };
+      return {
+        id, riadId, name: r.name, capacity: r.capacity, price: r.price,
+        photos: [1, 2].map((k) => `https://picsum.photos/seed/${id}-${k}/800/600`),
+        wifi: r.wifi ?? true,
+        bathroom: r.bathroom ?? (r.price >= 900 ? "private" : "shared"),
+        airConditioning: r.airConditioning ?? true,
+        heating: r.heating ?? true,
+        breakfast: r.breakfast ?? r.price >= 900,
+        terrace: r.terrace ?? r.capacity >= 3,
+        tv: r.tv ?? r.price >= 1000,
+      };
     });
     rooms.push(...riadRooms);
 

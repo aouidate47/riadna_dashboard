@@ -1,12 +1,25 @@
-import type { Riad, User } from "@/types";
+import type { BathroomType, Riad, User } from "@/types";
 
 export type MockUserRecord = User & { password: string };
+
+export interface RoomSeed {
+  name: string;
+  capacity: number;
+  price: number;
+  wifi?: boolean;
+  bathroom?: BathroomType;
+  airConditioning?: boolean;
+  heating?: boolean;
+  breakfast?: boolean;
+  terrace?: boolean;
+  tv?: boolean;
+}
 
 export interface RiadConfig {
   riad: Riad;
   seed: number;
   bookingCount: number;
-  rooms: { name: string; capacity: number; price: number }[];
+  rooms: RoomSeed[];
 }
 
 export const RIAD_CONFIGS: RiadConfig[] = [
@@ -14,6 +27,7 @@ export const RIAD_CONFIGS: RiadConfig[] = [
     riad: {
       id: "riad_yasmine", name: "Riad Yasmine", slug: "riad-yasmine",
       address: "12 Derb Sidi Ishak, Médina, Marrakech", phone: "+212 524 38 21 10",
+      latitude: 31.6335, longitude: -7.9892,
       checkInTime: "14:00", checkOutTime: "11:00",
     },
     seed: 101, bookingCount: 28,
@@ -28,6 +42,7 @@ export const RIAD_CONFIGS: RiadConfig[] = [
     riad: {
       id: "dar_anika", name: "Dar Anika", slug: "dar-anika",
       address: "4 Rue Riad Zitoun el Jdid, Marrakech", phone: "+212 524 44 87 32",
+      latitude: 31.6258, longitude: -7.9865,
       checkInTime: "15:00", checkOutTime: "12:00",
     },
     seed: 202, bookingCount: 22,
@@ -41,6 +56,7 @@ export const RIAD_CONFIGS: RiadConfig[] = [
     riad: {
       id: "riad_zitoun", name: "Riad Zitoun", slug: "riad-zitoun",
       address: "27 Derb Jdid, Kasbah, Marrakech", phone: "+212 524 39 05 76",
+      latitude: 31.6175, longitude: -7.988,
       checkInTime: "14:00", checkOutTime: "11:30",
     },
     seed: 303, bookingCount: 25,

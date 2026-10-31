@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   DndContext,
   DragOverlay,
@@ -12,7 +18,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
+import { addDays, differenceInCalendarDays, format, getDay, parseISO } from "date-fns";
 import {
   AlertCircle,
   CheckCircle2,
@@ -40,18 +46,37 @@ import type { BlockedPeriod, Booking, CreateBookingInput, Room } from "@/types";
 const DAYS = 14;
 
 const LEGEND = [
-  { label: "Pending", className: "bg-amber-400" },
+  { label: "Pending", className: "bg-amber-300" },
   { label: "Confirmed", className: "bg-sky-300" },
   { label: "Checked in", className: "bg-emerald-600" },
-  { label: "Checked out", className: "bg-muted-foreground/30" },
-  { label: "Cancelled", className: "bg-red-300" },
-  { label: "Blocked", className: "border border-dashed border-muted-foreground/50 bg-muted" },
+  { label: "Checked out", className: "bg-slate-300" },
+  { label: "Cancelled", className: "bg-red-200" },
+  { label: "Blocked", className: "bg-red-500" },
 ];
 
 interface DialogState {
   booking: Booking | null;
   defaults?: Partial<Pick<CreateBookingInput, "roomId" | "checkIn" | "checkOut">>;
 }
+
+interface DayStats {
+  occupied: number;
+  occupancy: number;
+  arrivals: number;
+  departures: number;
+}
+
+interface MonthSegment {
+  key: string;
+  label: string;
+  start: number;
+  end: number;
+}
+
+const isWeekendDate = (date: string) => {
+  const day = getDay(parseISO(date));
+  return day === 0 || day === 6;
+};
 
 export default function Page() {
   const { user } = useAuth();
@@ -66,6 +91,10 @@ export default function Page() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [dragBooking, setDragBooking] = useState<Booking | null>(null);
+  const rangeDragStartX = useRef<number | null>(null);
+  const rangeDayWidth = useRef(0);
+  const [rangePreviewDays, setRangePreviewDays] = useState(0);
+  const [isRangeDragging, setIsRangeDragging] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -78,6 +107,42 @@ export default function Page() {
     gridTemplateColumns: `repeat(${DAYS}, minmax(0, 1fr))`,
   };
   const rangeLabel = `${format(startDate, "d MMM")} – ${format(addDays(startDate, DAYS - 1), "d MMM yyyy")}`;
+
+  const dayStats = days.reduce<Record<string, DayStats>>((stats, date) => {
+    const occupied = bookings.filter(
+      (booking) =>
+        (booking.status === "CONFIRMED" || booking.status === "CHECKED_IN") &&
+        booking.checkIn <= date &&
+        booking.checkOut > date,
+    ).length;
+    stats[date] = {
+      occupied,
+      occupancy: rooms.length ? Math.round((occupied / rooms.length) * 100) : 0,
+      arrivals: bookings.filter(
+        (booking) => booking.checkIn === date && booking.status !== "CANCELLED",
+      ).length,
+      departures: bookings.filter(
+        (booking) => booking.checkOut === date && booking.status !== "CANCELLED",
+      ).length,
+    };
+    return stats;
+  }, {});
+
+  const monthSegments = days.reduce<MonthSegment[]>((segments, date, index) => {
+    const key = format(parseISO(date), "yyyy-MM");
+    const current = segments[segments.length - 1];
+    if (current && current.key === key) {
+      current.end = index + 1;
+    } else {
+      segments.push({
+        key,
+        label: format(parseISO(date), "MMM yyyy"),
+        start: index,
+        end: index + 1,
+      });
+    }
+    return segments;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +181,51 @@ export default function Page() {
     setLoading(true);
     setError(null);
     setStartDate(parseISO(todayISO()));
+  }
+
+  function handleRangeDragStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const width = event.currentTarget.getBoundingClientRect().width;
+    if (!width) return;
+    rangeDayWidth.current = width / DAYS;
+    rangeDragStartX.current = event.clientX;
+    setIsRangeDragging(true);
+    setRangePreviewDays(0);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleRangeDragMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (rangeDragStartX.current === null) return;
+    setRangePreviewDays(
+      Math.round(-(event.clientX - rangeDragStartX.current) / rangeDayWidth.current),
+    );
+  }
+
+  function handleRangeDragEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    if (rangeDragStartX.current === null) return;
+    const deltaX = event.clientX - rangeDragStartX.current;
+    rangeDragStartX.current = null;
+    setIsRangeDragging(false);
+    setRangePreviewDays(0);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    const dayWidth = rangeDayWidth.current;
+    if (!dayWidth) return;
+    const daysShifted = Math.round(-deltaX / dayWidth);
+    if (daysShifted === 0) return;
+    setLoading(true);
+    setError(null);
+    setStartDate((current) => addDays(current, daysShifted));
+  }
+
+  function handleRangeDragCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    rangeDragStartX.current = null;
+    setIsRangeDragging(false);
+    setRangePreviewDays(0);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }
 
   function refresh() {
@@ -292,32 +402,97 @@ export default function Page() {
             ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-[1200px]">
+                  <div className="flex border-b border-border bg-muted/20">
+                    <div className="sticky left-0 z-20 flex w-44 shrink-0 items-center border-r border-border bg-muted/20 px-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {isRangeDragging ? (
+                        <span className="tabular-nums">
+                          {rangePreviewDays === 0
+                            ? "Drag…"
+                            : rangePreviewDays > 0
+                              ? `+${rangePreviewDays} days`
+                              : `${rangePreviewDays} days`}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div
+                      role="group"
+                      aria-label="Move the two-week range"
+                      title="Drag left or right to move the two-week range"
+                      className="grid flex-1 cursor-grab touch-none select-none active:cursor-grabbing"
+                      style={gridStyle}
+                      onPointerDown={handleRangeDragStart}
+                      onPointerMove={handleRangeDragMove}
+                      onPointerUp={handleRangeDragEnd}
+                      onPointerCancel={handleRangeDragCancel}
+                    >
+                      {monthSegments.map((segment) => (
+                        <div
+                          key={segment.key}
+                          style={{ gridColumn: `${segment.start + 1} / ${segment.end + 1}` }}
+                          className="truncate border-l border-border/70 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide first:border-l-0"
+                        >
+                          {segment.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="flex border-b border-border bg-muted/30">
-                    <div className="sticky left-0 z-20 flex w-48 shrink-0 items-center border-r border-border bg-muted/30 px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <div className="sticky left-0 z-20 flex w-44 shrink-0 items-center border-r border-border bg-muted/30 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Room
                     </div>
                     <div className="grid flex-1" style={gridStyle}>
                       {days.map((date) => {
                         const isToday = date === todayISO();
+                        const weekend = isWeekendDate(date);
+                        const stats = dayStats[date];
                         return (
                           <div
                             key={date}
+                            title={`${stats.occupied} of ${rooms.length} rooms occupied · ${stats.arrivals} arrivals · ${stats.departures} departures`}
                             className={cn(
-                              "border-l border-border/70 px-1.5 py-2 text-center first:border-l-0",
-                              isToday && "bg-primary/5",
+                              "border-l border-border/70 px-1 py-2 text-center first:border-l-0",
+                              weekend && !isToday && "bg-muted/40",
+                              isToday && "bg-amber-100/70",
                             )}
                           >
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            <p
+                              className={cn(
+                                "text-[10px] uppercase tracking-wide",
+                                isToday ? "text-amber-800" : "text-muted-foreground",
+                              )}
+                            >
                               {format(parseISO(date), "EEE")}
                             </p>
                             <p
                               className={cn(
-                                "mt-0.5 inline-flex min-w-12 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold",
-                                isToday && "brand-gradient text-primary-foreground",
+                                "mt-0.5 inline-flex min-w-8 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold",
+                                isToday ? "bg-amber-400 text-amber-950" : "text-foreground",
                               )}
                             >
-                              {format(parseISO(date), "d MMM")}
+                              {format(parseISO(date), "d")}
                             </p>
+                            <p
+                              className={cn(
+                                "mt-1 text-[10px] font-medium tabular-nums",
+                                isToday ? "text-amber-800" : "text-muted-foreground",
+                              )}
+                            >
+                              {stats.occupancy}%
+                            </p>
+                            <span
+                              title={`${stats.arrivals} arrivals`}
+                              className={cn(
+                                "mt-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                                stats.arrivals > 0
+                                  ? "bg-sky-100 text-sky-800"
+                                  : isToday
+                                    ? "bg-amber-200/70 text-amber-900"
+                                    : "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {stats.arrivals}
+                            </span>
                           </div>
                         );
                       })}
@@ -333,20 +508,28 @@ export default function Page() {
 
                       return (
                         <div key={room.id} className="flex border-b border-border last:border-b-0">
-                          <div className="sticky left-0 z-20 w-48 shrink-0 border-r border-border bg-card px-4 py-3">
-                            <p className="truncate text-sm font-medium">{room.name}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {pluralize(room.capacity, "guest")} · {formatMoney(room.price)}
+                          <div className="sticky left-0 z-20 w-44 shrink-0 border-r border-border bg-card px-3 py-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="truncate text-xs font-medium" title={room.name}>
+                                {room.name}
+                              </p>
+                              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                                {room.capacity}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">
+                              {formatMoney(room.price)} / night
                             </p>
                           </div>
                           <div className="relative flex-1">
-                            <div className="grid h-20" style={gridStyle}>
+                            <div className="grid h-11" style={gridStyle}>
                               {days.map((date) => (
                                 <CalendarDayCell
                                   key={date}
                                   roomId={room.id}
                                   date={date}
                                   isToday={date === todayISO()}
+                                  isWeekend={isWeekendDate(date)}
                                   onCreate={openNewBooking}
                                 />
                               ))}
@@ -412,7 +595,7 @@ export default function Page() {
                 </span>
               ))}
               <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
-                Drag a booking by its handle to move it.
+                Drag a booking by its handle to move it. Dots mark balances due.
               </span>
             </footer>
           </section>
@@ -441,11 +624,13 @@ function CalendarDayCell({
   roomId,
   date,
   isToday,
+  isWeekend,
   onCreate,
 }: {
   roomId: string;
   date: string;
   isToday: boolean;
+  isWeekend: boolean;
   onCreate: (roomId: string, date: string) => void;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `cell:${roomId}:${date}` });
@@ -459,7 +644,8 @@ function CalendarDayCell({
       aria-label={`Create a booking on ${format(parseISO(date), "d MMMM yyyy")}`}
       className={cn(
         "h-full border-l border-border/70 transition first:border-l-0 hover:bg-muted/40",
-        isToday && "bg-primary/[0.04]",
+        isWeekend && !isToday && "bg-muted/30",
+        isToday && "bg-amber-100/40",
         isOver && "bg-primary/10 ring-1 ring-inset ring-primary",
       )}
     />

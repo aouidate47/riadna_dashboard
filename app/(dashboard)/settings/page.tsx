@@ -5,14 +5,22 @@ import {
   AlertCircle,
   Building2,
   CheckCircle2,
+  ExternalLink,
   Loader2,
+  MapPin,
   Save,
   ShieldCheck,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
 import { AuthGuard } from "@/components/providers/auth-guard";
 import { useAuth } from "@/components/providers/auth-provider";
+import {
+  LocationPickerDialog,
+  type Coordinates,
+} from "@/components/settings/location-picker-dialog";
+import { NewUserDialog } from "@/components/settings/new-user-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +29,10 @@ import { getCurrentRiad, getStaffUsers, updateRiad } from "@/lib/api";
 import { cn, initials } from "@/lib/utils";
 import type { Riad, User } from "@/types";
 
-type RiadForm = Pick<Riad, "name" | "address" | "phone" | "checkInTime" | "checkOutTime">;
+type RiadForm = Pick<
+  Riad,
+  "name" | "address" | "phone" | "checkInTime" | "checkOutTime" | "latitude" | "longitude"
+>;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const toForm = (riad: Riad): RiadForm => ({
@@ -30,6 +41,8 @@ const toForm = (riad: Riad): RiadForm => ({
   phone: riad.phone,
   checkInTime: riad.checkInTime,
   checkOutTime: riad.checkOutTime,
+  latitude: riad.latitude,
+  longitude: riad.longitude,
 });
 
 export default function Page() {
@@ -52,6 +65,8 @@ function SettingsContent() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [newUserOpen, setNewUserOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +125,8 @@ function SettingsContent() {
       phone: form.phone.trim(),
       checkInTime: form.checkInTime,
       checkOutTime: form.checkOutTime,
+      latitude: form.latitude,
+      longitude: form.longitude,
     };
     if (!next.name) return setError("Enter the riad name.");
     if (!next.address) return setError("Enter the riad address.");
@@ -131,6 +148,32 @@ function SettingsContent() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveLocation(next: Coordinates) {
+    const updated = await updateRiad({ latitude: next.lat, longitude: next.lng });
+    setCurrent(updated);
+    setForm((currentForm) =>
+      currentForm
+        ? { ...currentForm, latitude: updated.latitude, longitude: updated.longitude }
+        : currentForm,
+    );
+    setBaseline((currentBaseline) =>
+      currentBaseline
+        ? { ...currentBaseline, latitude: updated.latitude, longitude: updated.longitude }
+        : currentBaseline,
+    );
+    setError(null);
+    setNotice("Riad location saved.");
+    setMapOpen(false);
+    await refreshRiad().catch(() => undefined);
+  }
+
+  function handleUserCreated(member: User) {
+    setStaff((currentStaff) => [...currentStaff, member]);
+    setNewUserOpen(false);
+    setError(null);
+    setNotice(`${member.name} added to the team.`);
   }
 
   return (
@@ -210,6 +253,44 @@ function SettingsContent() {
                 />
               </div>
 
+              <div className="grid gap-2">
+                <Label>Exact location</Label>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMapOpen(true)}
+                  >
+                    <MapPin />
+                    {form.latitude != null && form.longitude != null
+                      ? "Change location"
+                      : "Pick on map"}
+                  </Button>
+                  {form.latitude != null && form.longitude != null ? (
+                    <>
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+                      </span>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${form.latitude}&mlon=${form.longitude}#map=17/${form.latitude}/${form.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        <ExternalLink className="size-3" />
+                        View map
+                      </a>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No exact pin yet.</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Guests will use this pin for directions.
+                </p>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="settings-phone">Phone</Label>
@@ -283,6 +364,16 @@ function SettingsContent() {
                     {staff.length} account{staff.length === 1 ? "" : "s"} for this riad
                   </p>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => setNewUserOpen(true)}
+                >
+                  <UserPlus />
+                  New user
+                </Button>
               </header>
               <ul className="divide-y divide-border">
                 {sortedStaff.map((member) => (
@@ -345,6 +436,20 @@ function SettingsContent() {
           </div>
         </div>
       )}
+
+      <LocationPickerDialog
+        open={mapOpen}
+        onOpenChange={setMapOpen}
+        latitude={form?.latitude}
+        longitude={form?.longitude}
+        onSave={saveLocation}
+      />
+
+      <NewUserDialog
+        open={newUserOpen}
+        onOpenChange={setNewUserOpen}
+        onCreated={handleUserCreated}
+      />
     </div>
   );
 }

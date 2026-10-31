@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<body style="margin:0">
+<div id="frames"></div>
+<pre id="out">waiting</pre>
+<script>
+  const sizes = [
+    [390, 844],
+    [390, 667],
+    [360, 640],
+    [1280, 800],
+  ];
+  const results = [];
+  const frames = document.getElementById("frames");
+  let remaining = sizes.length;
+  sizes.forEach(([width, height]) => {
+    const frame = document.createElement("iframe");
+    frame.src = "/login";
+    frame.style.cssText = `width:${width}px;height:${height}px;border:0;display:block`;
+    frame.addEventListener("load", () => {
+      setTimeout(() => {
+        const w = frame.contentWindow;
+        const d = frame.contentDocument;
+        const main = d.querySelector("main");
+        const section = d.querySelector("main > section:nth-of-type(2)");
+        const wrap = d.querySelector("main > section:nth-of-type(2) > div.relative");
+        const card = wrap ? wrap.querySelector("div.min-w-0") : null;
+        const rect = (el) => (el ? el.getBoundingClientRect().toJSON() : null);
+        results.push({
+          size: `${width}x${height}`,
+          innerWidth: w.innerWidth,
+          innerHeight: w.innerHeight,
+          docScrollWidth: d.documentElement.scrollWidth,
+          docScrollHeight: d.documentElement.scrollHeight,
+          bodyScrollHeight: d.body.scrollHeight,
+          main: rect(main),
+          section: rect(section),
+          wrap: rect(wrap),
+          card: rect(card),
+          cardScrollHeight: card ? card.scrollHeight : null,
+          sectionScrollHeight: section ? section.scrollHeight : null,
+        });
+        remaining -= 1;
+        if (remaining === 0) {
+          document.getElementById("out").textContent = JSON.stringify(results, null, 2);
+        }
+      }, 1500);
+    });
+    frames.appendChild(frame);
+  });
+</script>
+</body>
+</html>

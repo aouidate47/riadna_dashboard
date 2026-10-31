@@ -17,10 +17,15 @@ export async function getRoom(id: string): Promise<Room> {
   return clone(r);
 }
 
+function validateRoomPhotos(photos: string[] | undefined) {
+  if (photos && photos.length > 4) throw new ApiError("VALIDATION", "A room can have at most 4 photos");
+}
+
 export async function createRoom(input: Omit<Room, "id" | "riadId">): Promise<Room> {
   const { riadId } = requireUser();
   await delay();
   if (!input.name.trim() || input.capacity < 1 || input.price < 0) throw new ApiError("VALIDATION", "Invalid room data");
+  validateRoomPhotos(input.photos);
   const room: Room = { ...input, id: `${riadId}_room_${Date.now().toString(36)}`, riadId };
   db.rooms.push(room);
   return clone(room);
@@ -31,6 +36,7 @@ export async function updateRoom(id: string, patch: Partial<Omit<Room, "id" | "r
   await delay();
   const r = db.rooms.find((x) => x.id === id && x.riadId === riadId);
   if (!r) throw new ApiError("NOT_FOUND", "Room not found");
+  validateRoomPhotos(patch.photos);
   Object.assign(r, patch);
   return clone(r);
 }

@@ -6,13 +6,21 @@ import {
   AlertCircle,
   Ban,
   Banknote,
+  Bath,
   BedDouble,
   CheckCircle2,
+  Coffee,
+  Flame,
   Pencil,
   Plus,
   RefreshCw,
+  Snowflake,
+  Sun,
+  Tv,
   Users,
+  Wifi,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -271,6 +279,8 @@ export default function Page() {
                         </span>
                       </div>
 
+                      <RoomAmenities room={room} />
+
                       <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
                         <Button
                           variant="ghost"
@@ -317,6 +327,35 @@ export default function Page() {
         blocks={blockRoom ? blocks.filter((block) => block.roomId === blockRoom.id) : []}
         onChanged={handleBlocksChanged}
       />
+    </div>
+  );
+}
+
+function RoomAmenities({ room }: { room: Room }) {
+  const items: { label: string; icon: LucideIcon }[] = [
+    {
+      label: room.bathroom === "private" ? "Private bathroom" : "Shared bathroom",
+      icon: Bath,
+    },
+  ];
+  if (room.wifi) items.push({ label: "Wi-Fi", icon: Wifi });
+  if (room.airConditioning) items.push({ label: "A/C", icon: Snowflake });
+  if (room.heating) items.push({ label: "Heating", icon: Flame });
+  if (room.breakfast) items.push({ label: "Breakfast", icon: Coffee });
+  if (room.terrace) items.push({ label: "Terrace", icon: Sun });
+  if (room.tv) items.push({ label: "TV", icon: Tv });
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {items.map((item) => (
+        <span
+          key={item.label}
+          className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+        >
+          <item.icon className="size-3" />
+          {item.label}
+        </span>
+      ))}
     </div>
   );
 }

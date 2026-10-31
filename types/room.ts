@@ -1,10 +1,19 @@
+export type BathroomType = "private" | "shared";
+
 export interface Room {
   id: string;
   riadId: string;
   name: string; // e.g. "Chambre Jasmin"
   capacity: number;
   price: number; // per night, MAD
-  photos: string[];
+  photos: string[]; // up to 4, usually uploaded as data URLs
+  wifi: boolean;
+  bathroom: BathroomType;
+  airConditioning: boolean;
+  heating: boolean;
+  breakfast: boolean;
+  terrace: boolean;
+  tv: boolean;
 }
 
 /**

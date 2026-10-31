@@ -5,6 +5,8 @@ export interface Riad {
   logo?: string;
   address: string;
   phone: string;
+  latitude?: number;
+  longitude?: number;
   checkInTime: string; // "14:00"
   checkOutTime: string; // "11:00"
 }
