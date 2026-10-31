@@ -2,6 +2,7 @@ import type { Booking, BookingFilters, BookingStatus, CreateBookingInput, Pagina
 import { canTransition } from "@/lib/booking-status";
 import { db } from "@/lib/mock/db";
 import { clone, delay, findConflict, requireUser } from "./_internal";
+import { publishAdminAvailability } from "./external-bookings";
 import { ApiError } from "./errors";
 import { datesOverlap } from "@/lib/dates";
 
@@ -19,7 +20,7 @@ function applyFilters(riadId: string, f: BookingFilters): Booking[] {
       (!statuses || statuses.includes(b.status)) &&
       (!sources || sources.includes(b.source)) &&
       (!f.roomId || b.roomId === f.roomId) &&
-      (!q || norm(b.guestName).includes(q)) &&
+      (!q || norm(b.guestName).includes(q) || norm(b.code ?? "").includes(q)) &&
       (!f.from || !f.to || datesOverlap(b.checkIn, b.checkOut, f.from, f.to)) &&
       (!f.from || f.to || b.checkOut > f.from) &&
       (!f.to || f.from || b.checkIn < f.to),
@@ -79,6 +80,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
   const n = db.bookings.filter((b) => b.riadId === riadId).length + 1;
   const booking: Booking = { ...input, paid: input.paid ?? 0, id: `${riadId}_bk_${String(n).padStart(3, "0")}_${Date.now().toString(36)}`, riadId, createdAt: new Date().toISOString() };
   db.bookings.push(booking);
+  await publishAdminAvailability();
   return clone(booking);
 }
 
@@ -95,6 +97,7 @@ export async function updateBooking(id: string, patch: UpdateBookingInput): Prom
   }
   if (next.status !== "CANCELLED") assertNoConflict(riadId, next.roomId, next.checkIn, next.checkOut, id);
   Object.assign(b, next);
+  await publishAdminAvailability();
   return clone(b);
 }
 

@@ -1,6 +1,7 @@
 import type { BlockedPeriod, Room } from "@/types";
 import { db } from "@/lib/mock/db";
 import { clone, delay, findConflict, requireUser } from "./_internal";
+import { publishAdminAvailability } from "./external-bookings";
 import { ApiError } from "./errors";
 
 export async function getRooms(): Promise<Room[]> {
@@ -55,6 +56,7 @@ export async function createBlockedPeriod(input: Omit<BlockedPeriod, "id" | "ria
   if (findConflict(riadId, input.roomId, input.from, input.to)) throw new ApiError("CONFLICT", "Dates overlap an existing booking or block");
   const block: BlockedPeriod = { ...input, id: `${riadId}_block_${Date.now().toString(36)}`, riadId };
   db.blocks.push(block);
+  await publishAdminAvailability();
   return clone(block);
 }
 
@@ -64,4 +66,5 @@ export async function deleteBlockedPeriod(id: string): Promise<void> {
   const i = db.blocks.findIndex((b) => b.id === id && b.riadId === riadId);
   if (i === -1) throw new ApiError("NOT_FOUND", "Blocked period not found");
   db.blocks.splice(i, 1);
+  await publishAdminAvailability();
 }

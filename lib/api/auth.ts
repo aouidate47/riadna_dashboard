@@ -4,6 +4,7 @@ import { db } from "@/lib/mock/db";
 import { MOCK_USERS } from "@/lib/mock/data";
 import { clone, delay } from "./_internal";
 import { ApiError } from "./errors";
+import { syncExternalBookings, publishAdminAvailability } from "./external-bookings";
 
 /** LATER: POST /auth/login -> { token, user, riad }. */
 export async function login(email: string, password: string): Promise<{ user: User; riad: Riad }> {
@@ -14,6 +15,8 @@ export async function login(email: string, password: string): Promise<{ user: Us
   if (!riad) throw new ApiError("NOT_FOUND", "Riad not found");
   const { password: _pw, ...user } = record;
   session.set({ user: clone(user), riad: clone(riad) });
+  await syncExternalBookings();
+  await publishAdminAvailability();
   return { user: clone(user), riad: clone(riad) };
 }
 

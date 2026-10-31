@@ -9,4 +9,5 @@ export interface Riad {
   longitude?: number;
   checkInTime: string; // "14:00"
   checkOutTime: string; // "11:00"
+  about?: string;
 }

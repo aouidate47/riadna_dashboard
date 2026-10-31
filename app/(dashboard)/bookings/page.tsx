@@ -43,7 +43,7 @@ import type {
 
 const PAGE_SIZE = 8;
 const STATUSES: BookingStatus[] = ["PENDING", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED"];
-const SOURCES: BookingSource[] = ["direct", "booking.com", "airbnb", "phone", "walk-in"];
+const SOURCES: BookingSource[] = ["direct", "booking.com", "airbnb.com", "riadna.ma", "phone", "walk-in"];
 const SORT_OPTIONS = [
   { value: "checkIn-desc", label: "Check-in · newest first" },
   { value: "checkIn-asc", label: "Check-in · soonest first" },

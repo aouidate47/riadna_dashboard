@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-const SOURCES: BookingSource[] = ["direct", "booking.com", "airbnb", "phone", "walk-in"];
+const SOURCES: BookingSource[] = ["direct", "booking.com", "airbnb.com", "riadna.ma", "phone", "walk-in"];
 const NEW_STATUSES: BookingStatus[] = ["PENDING", "CONFIRMED", "CHECKED_IN"];
 
 interface BookingDialogProps {
@@ -180,7 +180,7 @@ function BookingForm({
         <DialogTitle>{booking ? "Edit booking" : "New booking"}</DialogTitle>
         <DialogDescription>
           {booking
-            ? `Update the stay for ${booking.guestName}.`
+            ? `Update the stay for ${booking.guestName}${booking.code ? ` · ${booking.code}` : ""}.`
             : "Add a guest stay. Overlapping bookings are rejected automatically."}
         </DialogDescription>
       </DialogHeader>

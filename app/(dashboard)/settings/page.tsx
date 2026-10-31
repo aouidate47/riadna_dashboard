@@ -31,7 +31,7 @@ import type { Riad, User } from "@/types";
 
 type RiadForm = Pick<
   Riad,
-  "name" | "address" | "phone" | "checkInTime" | "checkOutTime" | "latitude" | "longitude"
+  "name" | "address" | "phone" | "checkInTime" | "checkOutTime" | "latitude" | "longitude" | "about"
 >;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -43,6 +43,7 @@ const toForm = (riad: Riad): RiadForm => ({
   checkOutTime: riad.checkOutTime,
   latitude: riad.latitude,
   longitude: riad.longitude,
+  about: riad.about ?? "",
 });
 
 export default function Page() {
@@ -127,6 +128,7 @@ function SettingsContent() {
       checkOutTime: form.checkOutTime,
       latitude: form.latitude,
       longitude: form.longitude,
+      about: (form.about ?? "").trim(),
     };
     if (!next.name) return setError("Enter the riad name.");
     if (!next.address) return setError("Enter the riad address.");
@@ -327,6 +329,16 @@ function SettingsContent() {
                     onChange={(event) => update("checkOutTime", event.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="settings-about-the-riad">About the riad</Label>
+                <Textarea
+                  id="settings-about-the-riad"
+                  value={form.about}
+                  onChange={(event) => update("about", event.target.value)}
+                  className="min-h-[100px]"
+                />
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">

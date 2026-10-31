@@ -11,7 +11,8 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
 export const BOOKING_SOURCE_LABELS: Record<BookingSource, string> = {
   direct: "Direct",
   "booking.com": "Booking.com",
-  airbnb: "Airbnb",
+  "airbnb.com": "Airbnb.com",
+  "riadna.ma": "Riadna.ma",
   phone: "Phone",
   "walk-in": "Walk-in",
 };

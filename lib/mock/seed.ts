@@ -6,7 +6,7 @@ import { mulberry32 } from "./rng";
 
 type Draft = Omit<Booking, "id">;
 const MAIL_DOMAINS = ["gmail.com", "outlook.com", "yahoo.com", "hotmail.com", "icloud.com"];
-const SOURCES: [BookingSource, number][] = [["direct", 0.3], ["booking.com", 0.3], ["airbnb", 0.2], ["phone", 0.12], ["walk-in", 0.08]];
+const SOURCES: [BookingSource, number][] = [["direct", 0.3], ["booking.com", 0.3], ["airbnb.com", 0.2], ["riadna.ma", 0.1], ["phone", 0.12], ["walk-in", 0.08]];
 
 const slugify = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]+/g, ".").replace(/^\.|\.$/g, "");
 const round10 = (n: number) => Math.round(n / 10) * 10;

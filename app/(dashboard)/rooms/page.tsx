@@ -218,10 +218,10 @@ export default function Page() {
                 const roomBlocks = blocks.filter((block) => block.roomId === room.id);
                 const status = isBlocked ? "Blocked" : isOccupied ? "Occupied" : "Available";
                 const statusClass = isBlocked
-                  ? "bg-amber-500 text-white"
+                  ? "bg-gold text-white"
                   : isOccupied
-                    ? "bg-slate-900/80 text-white"
-                    : "bg-emerald-600 text-white";
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-success text-white";
 
                 return (
                   <article

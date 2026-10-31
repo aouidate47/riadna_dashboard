@@ -29,6 +29,7 @@ export const RIAD_CONFIGS: RiadConfig[] = [
       address: "12 Derb Sidi Ishak, Médina, Marrakech", phone: "+212 524 38 21 10",
       latitude: 31.6335, longitude: -7.9892,
       checkInTime: "14:00", checkOutTime: "11:00",
+      about: "Riad Yasmine is a restored courtyard house in the medina, with a small pool, orange trees and a rooftop terrace. The team serves breakfast on the patio and can arrange hammam visits, cooking classes and airport transfers.",
     },
     seed: 101, bookingCount: 28,
     rooms: [
@@ -44,6 +45,7 @@ export const RIAD_CONFIGS: RiadConfig[] = [
       address: "4 Rue Riad Zitoun el Jdid, Marrakech", phone: "+212 524 44 87 32",
       latitude: 31.6258, longitude: -7.9865,
       checkInTime: "15:00", checkOutTime: "12:00",
+      about: "Dar Anika is a quiet guesthouse in the Riad Zitoun el Jdid quarter, a short walk from Jemaa el-Fna. Its six rooms open onto a plant-filled courtyard, and the rooftop has views over the medina.",
     },
     seed: 202, bookingCount: 22,
     rooms: [
@@ -58,6 +60,7 @@ export const RIAD_CONFIGS: RiadConfig[] = [
       address: "27 Derb Jdid, Kasbah, Marrakech", phone: "+212 524 39 05 76",
       latitude: 31.6175, longitude: -7.988,
       checkInTime: "14:00", checkOutTime: "11:30",
+      about: "Riad Zitoun is a family-run house in the Kasbah, close to the Saadian tombs. Seven rooms surround a shaded courtyard with a fountain, and the rooftop is a calm spot for breakfast or mint tea.",
     },
     seed: 303, bookingCount: 25,
     rooms: [

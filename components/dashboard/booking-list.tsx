@@ -12,17 +12,18 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
 };
 
 const STATUS_STYLES: Record<BookingStatus, string> = {
-  PENDING: "bg-amber-100 text-amber-900",
-  CONFIRMED: "bg-blue-100 text-blue-900",
-  CHECKED_IN: "bg-emerald-100 text-emerald-900",
+  PENDING: "bg-gold/15 text-foreground ring-1 ring-gold/30",
+  CONFIRMED: "bg-primary/10 text-primary",
+  CHECKED_IN: "bg-success/15 text-success",
   CHECKED_OUT: "bg-muted text-muted-foreground",
-  CANCELLED: "bg-red-100 text-red-900",
+  CANCELLED: "bg-destructive/10 text-destructive",
 };
 
 const SOURCE_LABELS: Record<BookingSource, string> = {
   direct: "Direct",
   "booking.com": "Booking.com",
-  airbnb: "Airbnb",
+  "airbnb.com": "Airbnb.com",
+  "riadna.ma": "Riadna.ma",
   phone: "Phone",
   "walk-in": "Walk-in",
 };

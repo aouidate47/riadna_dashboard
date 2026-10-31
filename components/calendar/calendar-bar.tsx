@@ -8,22 +8,24 @@ import { cn } from "@/lib/utils";
 import type { BlockedPeriod, Booking, BookingStatus } from "@/types";
 
 const STATUS_STYLES: Record<BookingStatus, string> = {
-  PENDING: "border-amber-400 bg-amber-300 text-amber-950 hover:bg-amber-400",
-  CONFIRMED: "border-sky-400 bg-sky-300 text-sky-950 hover:bg-sky-400",
-  CHECKED_IN: "border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700",
-  CHECKED_OUT: "border-slate-400 bg-slate-300 text-slate-700 hover:bg-slate-400",
-  CANCELLED: "border-red-300 bg-red-100 text-red-700 line-through hover:bg-red-200",
+  PENDING: "border-gold/50 bg-gold/25 text-foreground hover:bg-gold/35",
+  CONFIRMED: "border-primary/40 bg-primary/15 text-foreground hover:bg-primary/25",
+  CHECKED_IN: "border-success/60 bg-success text-white hover:bg-success/90",
+  CHECKED_OUT: "border-border bg-muted text-muted-foreground hover:bg-muted/80",
+  CANCELLED: "border-destructive/30 bg-destructive/10 text-destructive line-through hover:bg-destructive/20",
 };
 
 export function CalendarBookingBar({
   booking,
   startIndex,
   endIndex,
+  highlighted,
   onEdit,
 }: {
   booking: Booking;
   startIndex: number;
   endIndex: number;
+  highlighted?: boolean;
   onEdit: () => void;
 }) {
   const draggable = booking.status !== "CANCELLED" && booking.status !== "CHECKED_OUT";
@@ -39,9 +41,10 @@ export function CalendarBookingBar({
       className={cn(
         "group pointer-events-auto mx-0.5 flex h-6 min-w-0 items-center overflow-hidden rounded-md border text-[10px] shadow-sm transition",
         STATUS_STYLES[booking.status],
+        highlighted && "ring-2 ring-primary ring-offset-1 ring-offset-background",
         isDragging && "opacity-40",
       )}
-      title={`${booking.guestName} · ${formatDate(booking.checkIn)} → ${formatDate(booking.checkOut)} · ${
+      title={`${booking.code ? `${booking.code} · ` : ""}${booking.guestName} · ${formatDate(booking.checkIn)} → ${formatDate(booking.checkOut)} · ${
         BOOKING_STATUS_LABELS[booking.status]
       }${booking.total > booking.paid ? ` · ${formatMoney(booking.total - booking.paid)} due` : ""}`}
     >
@@ -77,7 +80,7 @@ function PaymentStatusDot({ booking }: { booking: Booking }) {
       title={`${formatMoney(due)} still due`}
       className={cn(
         "mr-1 size-1.5 shrink-0 rounded-full ring-1 ring-white/70",
-        booking.paid > 0 ? "bg-amber-400" : "bg-red-500",
+        booking.paid > 0 ? "bg-gold" : "bg-destructive",
       )}
     />
   );
@@ -95,7 +98,7 @@ export function CalendarBlockBar({
   return (
     <div
       style={{ gridColumn: `${startIndex + 1} / ${endIndex + 1}` }}
-      className="pointer-events-auto mx-0.5 flex h-6 min-w-0 items-center gap-1 overflow-hidden rounded-md border border-red-600 bg-red-500 px-1.5 text-[10px] font-medium text-white shadow-sm"
+      className="pointer-events-auto mx-0.5 flex h-6 min-w-0 items-center gap-1 overflow-hidden rounded-md border border-destructive bg-destructive px-1.5 text-[10px] font-medium text-white shadow-sm"
       title={`Blocked · ${formatDate(block.from)} → ${formatDate(block.to)}${block.reason ? ` · ${block.reason}` : ""}`}
     >
       <Ban className="size-3 shrink-0" />

@@ -75,9 +75,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="h-dvh overflow-hidden bg-[#f7f4f0] lg:grid lg:grid-cols-[1.05fr_1fr]">
+    <main className="h-dvh overflow-hidden bg-background lg:grid lg:grid-cols-[1.05fr_1fr]">
       {/* LEFT: brand panel (fixed, no scroll) */}
-      <section className="relative hidden h-dvh overflow-hidden bg-[#3b1a12] text-white lg:block">
+      <section className="relative hidden h-dvh overflow-hidden bg-sidebar text-white lg:block">
         <div className="absolute inset-0 brand-gradient" />
         <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_0%_0%,rgba(255,255,255,0.24),transparent_55%)]" />
         <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/15 to-transparent" />
@@ -91,7 +91,7 @@ export default function LoginPage() {
           }}
         />
         <div aria-hidden="true" className="absolute -left-24 top-16 size-72 rounded-full bg-white/20 blur-3xl" />
-        <div aria-hidden="true" className="absolute -right-24 bottom-8 size-80 rounded-full bg-orange-300/20 blur-3xl" />
+        <div aria-hidden="true" className="absolute -right-24 bottom-8 size-80 rounded-full bg-gold/20 blur-3xl" />
         <div aria-hidden="true" className="absolute -right-32 top-24 size-96 rounded-full border border-white/10" />
         <div aria-hidden="true" className="absolute -right-16 top-40 size-72 rounded-full border border-white/10" />
 
@@ -141,7 +141,7 @@ export default function LoginPage() {
                   </p>
                   <p className="mt-1 font-display text-xl">A calm day ahead</p>
                 </div>
-                <span className="rounded-full bg-emerald-300/15 px-2.5 py-1 text-[11px] font-medium text-emerald-100">
+                <span className="rounded-full bg-success/20 px-2.5 py-1 text-[11px] font-medium text-white">
                   82% occupied
                 </span>
               </div>
@@ -185,7 +185,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="min-w-0 rounded-3xl border border-border/80 bg-card/95 p-5 shadow-[0_30px_80px_-40px_rgba(23,27,46,0.35)] backdrop-blur sm:p-6">
+          <div className="min-w-0 rounded-lg border border-border/80 bg-card/95 p-5 shadow-elevated backdrop-blur sm:p-6">
             <div className="flex items-center justify-between gap-3 [@media(max-height:760px)]:hidden">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
                 <Sparkles className="size-3" />
@@ -365,7 +365,7 @@ export default function LoginPage() {
             href="https://yaranagency.netlify.app/"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-linear-to-r from-blue-500 to-purple-600 bg-clip-text font-semibold text-transparent hover:opacity-80"
+            className="font-semibold text-gold hover:text-primary"
           >
             powered by yaran
           </a>
