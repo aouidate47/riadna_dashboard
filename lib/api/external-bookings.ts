@@ -49,13 +49,14 @@ function ensureRoom(riadId: string, line: ExternalRoomLine, guests: number): Roo
     capacity: Math.max(1, guests),
     price: line.nightlyRate,
     photos: [],
-    wifi: true,
-    bathroom: "private",
-    airConditioning: true,
-    heating: true,
-    breakfast: false,
-    terrace: false,
-    tv: false,
+    description: "",
+    beds: "",
+    size: 0,
+    amenities: [],
+    isActive: true,
+    sortOrder: db.rooms.filter((candidate) => candidate.riadId === riadId).length,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   db.rooms.push(room)
   return room

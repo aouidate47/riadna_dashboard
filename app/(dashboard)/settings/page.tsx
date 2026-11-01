@@ -21,6 +21,7 @@ import {
   type Coordinates,
 } from "@/components/settings/location-picker-dialog";
 import { NewUserDialog } from "@/components/settings/new-user-dialog";
+import { RiadLogoField } from "@/components/settings/riad-logo-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,8 +132,7 @@ function SettingsContent() {
       about: (form.about ?? "").trim(),
     };
     if (!next.name) return setError("Enter the riad name.");
-    if (!next.address) return setError("Enter the riad address.");
-    if (!next.phone) return setError("Enter a phone number.");
+    // Address and phone are optional until platform-api stores them (see updateRiad).
     if (!TIME_PATTERN.test(next.checkInTime)) return setError("Enter a valid check-in time.");
     if (!TIME_PATTERN.test(next.checkOutTime)) return setError("Enter a valid check-out time.");
 
@@ -169,6 +169,13 @@ function SettingsContent() {
     setNotice("Riad location saved.");
     setMapOpen(false);
     await refreshRiad().catch(() => undefined);
+  }
+
+  function handleLogoChanged(updated: Riad, message: string) {
+    setCurrent(updated);
+    setError(null);
+    setNotice(message);
+    refreshRiad().catch(() => undefined);
   }
 
   function handleUserCreated(member: User) {
@@ -236,6 +243,8 @@ function SettingsContent() {
             </header>
 
             <form onSubmit={submit} noValidate className="grid gap-5 p-5">
+              <RiadLogoField riad={current} onChanged={handleLogoChanged} onError={setError} />
+
               <div className="grid gap-2">
                 <Label htmlFor="settings-name">Riad name</Label>
                 <Input
@@ -340,6 +349,11 @@ function SettingsContent() {
                   className="min-h-[100px]"
                 />
               </div>
+
+              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                The logo and riad name are saved to the server. The other details are kept only until
+                you log out, for now.
+              </p>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                 <p className="text-xs text-muted-foreground">

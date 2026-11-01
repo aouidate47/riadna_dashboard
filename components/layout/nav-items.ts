@@ -22,6 +22,12 @@ export function navForRole(role: UserRole | undefined) {
   return NAV_ITEMS.filter((i) => !i.roles || (role && i.roles.includes(role)));
 }
 
+/** Pages reached from the account menu, not the sidebar. */
+const EXTRA_TITLES: Pick<NavItem, "href" | "label">[] = [{ href: "/profile", label: "My profile" }];
+
 export function titleForPath(pathname: string) {
-  return NAV_ITEMS.find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))?.label ?? "min";
+  return (
+    [...NAV_ITEMS, ...EXTRA_TITLES].find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))?.label ??
+    "min"
+  );
 }

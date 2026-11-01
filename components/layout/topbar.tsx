@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Menu } from "lucide-react";
+import { ChevronDown, LogOut, Menu, UserRound } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,10 @@ export function Topbar() {
                 {riad && <span className="mt-1 block text-xs font-normal text-muted-foreground">{riad.name}</span>}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => router.push("/profile")}>
+                <UserRound />
+                My profile
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={onLogout}>
                 <LogOut />
                 Log out

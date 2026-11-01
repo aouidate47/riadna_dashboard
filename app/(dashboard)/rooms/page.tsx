@@ -4,34 +4,46 @@ import { useEffect, useState } from "react";
 import { addDays, parseISO } from "date-fns";
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Ban,
   Banknote,
-  Bath,
   BedDouble,
   CheckCircle2,
-  Coffee,
-  Flame,
+  EyeOff,
   Pencil,
   Plus,
   RefreshCw,
-  Snowflake,
-  Sun,
-  Tv,
+  Ruler,
+  Search,
   Users,
-  Wifi,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { BlockedDatesDialog } from "@/components/rooms/blocked-dates-dialog";
 import { RoomDialog } from "@/components/rooms/room-dialog";
 import { Button } from "@/components/ui/button";
-import { getBlockedPeriods, getBookings, getRooms } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { getBlockedPeriods, getBookings, getRooms, reorderRooms } from "@/lib/api";
 import { datesOverlap, toISODate, todayISO } from "@/lib/dates";
 import { formatMoney, pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { BlockedPeriod, Room } from "@/types";
+
+type StatusFilter = "all" | "visible" | "hidden" | "available" | "occupied" | "blocked";
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All rooms" },
+  { value: "visible", label: "Visible on site" },
+  { value: "hidden", label: "Hidden" },
+  { value: "available", label: "Available tonight" },
+  { value: "occupied", label: "Occupied tonight" },
+  { value: "blocked", label: "Blocked tonight" },
+];
+
+const GUEST_FILTERS = [1, 2, 3, 4, 6];
 
 export default function Page() {
   const { riad } = useAuth();
@@ -45,6 +57,10 @@ export default function Page() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [roomDialog, setRoomDialog] = useState<{ room: Room | null } | null>(null);
   const [blockRoomId, setBlockRoomId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [minGuests, setMinGuests] = useState(0);
 
   const today = todayISO();
   const tomorrow = toISODate(addDays(parseISO(today), 1));
@@ -91,12 +107,51 @@ export default function Page() {
       .map((block) => block.roomId),
   );
   const unavailable = new Set([...occupiedRoomIds, ...blockedTonight]);
-  const availableTonight = rooms.filter((room) => !unavailable.has(room.id)).length;
-  const totalCapacity = rooms.reduce((sum, room) => sum + room.capacity, 0);
-  const averageRate = rooms.length
-    ? Math.round(rooms.reduce((sum, room) => sum + room.price, 0) / rooms.length)
+  const activeRooms = rooms.filter((room) => room.isActive);
+  const hiddenCount = rooms.length - activeRooms.length;
+  const availableTonight = activeRooms.filter((room) => !unavailable.has(room.id)).length;
+  const totalCapacity = activeRooms.reduce((sum, room) => sum + room.capacity, 0);
+  const averageRate = activeRooms.length
+    ? Math.round(activeRooms.reduce((sum, room) => sum + room.price, 0) / activeRooms.length)
     : 0;
   const blockRoom = rooms.find((room) => room.id === blockRoomId) ?? null;
+
+  const query = search.trim().toLowerCase();
+  const isFiltered = Boolean(query) || statusFilter !== "all" || minGuests > 0;
+  const filteredRooms = rooms.filter((room) => {
+    if (
+      query &&
+      ![room.name, room.beds, room.description, ...room.amenities].some((text) =>
+        text.toLowerCase().includes(query),
+      )
+    ) {
+      return false;
+    }
+    if (minGuests && room.capacity < minGuests) return false;
+
+    const isBlocked = blockedTonight.has(room.id);
+    const isOccupied = occupiedRoomIds.has(room.id);
+    switch (statusFilter) {
+      case "visible":
+        return room.isActive;
+      case "hidden":
+        return !room.isActive;
+      case "available":
+        return room.isActive && !isBlocked && !isOccupied;
+      case "occupied":
+        return room.isActive && isOccupied;
+      case "blocked":
+        return room.isActive && isBlocked;
+      default:
+        return true;
+    }
+  });
+
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setMinGuests(0);
+  }
 
   function refresh() {
     setLoading(true);
@@ -111,6 +166,34 @@ export default function Page() {
     setError(null);
     setLoading(true);
     setRefreshKey((key) => key + 1);
+  }
+
+  function handleDeleted(room: Room) {
+    setRoomDialog(null);
+    setNotice(`${room.name} deleted.`);
+    setError(null);
+    setLoading(true);
+    setRefreshKey((key) => key + 1);
+  }
+
+  /** Moves a room one place earlier (-1) or later (+1) in the order used by the site and calendar. */
+  async function moveRoom(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= rooms.length) return;
+
+    const previous = rooms;
+    const next = [...rooms];
+    [next[index], next[target]] = [next[target], next[index]];
+    setRooms(next); // show the new order right away
+    setReordering(true);
+    try {
+      setRooms(await reorderRooms(next.map((room) => room.id)));
+    } catch (err) {
+      setRooms(previous);
+      setError(err instanceof Error ? err.message : "Could not change the room order.");
+    } finally {
+      setReordering(false);
+    }
   }
 
   function handleBlocksChanged() {
@@ -168,14 +251,14 @@ export default function Page() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Rooms"
-              value={String(rooms.length)}
-              hint={`${pluralize(totalCapacity, "guest")} total capacity`}
+              value={String(activeRooms.length)}
+              hint={`${pluralize(totalCapacity, "guest")} total capacity${hiddenCount ? ` · ${hiddenCount} hidden` : ""}`}
               icon={BedDouble}
             />
             <StatCard
               label="Available tonight"
               value={String(availableTonight)}
-              hint={`${rooms.length - availableTonight} occupied or blocked`}
+              hint={`${activeRooms.length - availableTonight} occupied or blocked`}
               icon={CheckCircle2}
             />
             <StatCard
@@ -192,6 +275,55 @@ export default function Page() {
             />
           </div>
 
+          {rooms.length > 0 ? (
+            <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+              <div className="grid gap-3 md:grid-cols-[minmax(15rem,1fr)_12rem_10rem_auto]">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search name, beds, amenities…"
+                    aria-label="Search rooms"
+                    className="pl-9"
+                  />
+                </div>
+                <Select
+                  aria-label="Filter by status"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                >
+                  {STATUS_FILTERS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  aria-label="Filter by number of guests"
+                  value={minGuests}
+                  onChange={(event) => setMinGuests(Number(event.target.value))}
+                >
+                  <option value={0}>Any size</option>
+                  {GUEST_FILTERS.map((guests) => (
+                    <option key={guests} value={guests}>
+                      {guests}+ guests
+                    </option>
+                  ))}
+                </Select>
+                <Button variant="ghost" onClick={clearFilters} disabled={!isFiltered} className="h-10">
+                  <X />
+                  Clear
+                </Button>
+              </div>
+              <p className="mt-2 px-1 text-xs text-muted-foreground">
+                {isFiltered
+                  ? `Showing ${filteredRooms.length} of ${pluralize(rooms.length, "room")}. Clear the filters to change the room order.`
+                  : `${pluralize(rooms.length, "room")}. Use ↑ ↓ to set the order on the booking site and calendar.`}
+              </p>
+            </section>
+          ) : null}
+
           {rooms.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card px-6 py-14 text-center">
               <BedDouble className="mx-auto size-10 text-muted-foreground" />
@@ -204,6 +336,16 @@ export default function Page() {
                 New room
               </Button>
             </div>
+          ) : filteredRooms.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-card px-6 py-14 text-center">
+              <Search className="mx-auto size-10 text-muted-foreground" />
+              <p className="mt-3 text-sm font-medium">No rooms match these filters</p>
+              <p className="mt-1 text-sm text-muted-foreground">Try another search or clear the filters.</p>
+              <Button size="sm" variant="outline" className="mt-4" onClick={clearFilters}>
+                <X />
+                Clear filters
+              </Button>
+            </div>
           ) : (
             <div
               className={cn(
@@ -211,22 +353,35 @@ export default function Page() {
                 loading && "opacity-60 transition-opacity",
               )}
             >
-              {rooms.map((room) => {
+              {filteredRooms.map((room) => {
+                // Position in the full list: reordering always works on every room.
+                const index = rooms.indexOf(room);
                 const photo = room.photos[0];
                 const isOccupied = occupiedRoomIds.has(room.id);
                 const isBlocked = blockedTonight.has(room.id);
                 const roomBlocks = blocks.filter((block) => block.roomId === room.id);
-                const status = isBlocked ? "Blocked" : isOccupied ? "Occupied" : "Available";
-                const statusClass = isBlocked
-                  ? "bg-gold text-white"
-                  : isOccupied
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-success text-white";
+                const status = !room.isActive
+                  ? "Hidden"
+                  : isBlocked
+                    ? "Blocked"
+                    : isOccupied
+                      ? "Occupied"
+                      : "Available";
+                const statusClass = !room.isActive
+                  ? "bg-black/70 text-white"
+                  : isBlocked
+                    ? "bg-gold text-white"
+                    : isOccupied
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-success text-white";
 
                 return (
                   <article
                     key={room.id}
-                    className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+                    className={cn(
+                      "overflow-hidden rounded-lg border border-border bg-card shadow-sm",
+                      !room.isActive && "opacity-75",
+                    )}
                   >
                     <div className="relative h-40 overflow-hidden bg-muted">
                       {photo ? (
@@ -251,6 +406,7 @@ export default function Page() {
                           statusClass,
                         )}
                       >
+                        {!room.isActive ? <EyeOff className="mr-1 inline size-3" /> : null}
                         {status}
                       </span>
                       <div className="absolute inset-x-4 bottom-3 flex items-end justify-between gap-3 text-white">
@@ -273,6 +429,20 @@ export default function Page() {
                             Sleeps {pluralize(room.capacity, "guest")} ·{" "}
                             {room.photos.length ? pluralize(room.photos.length, "photo") : "No photos"}
                           </p>
+                          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            {room.beds ? (
+                              <span className="inline-flex items-center gap-1">
+                                <BedDouble className="size-3.5" />
+                                {room.beds}
+                              </span>
+                            ) : null}
+                            {room.size ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Ruler className="size-3.5" />
+                                {room.size} m²
+                              </span>
+                            ) : null}
+                          </p>
                         </div>
                         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                           {roomBlocks.length ? pluralize(roomBlocks.length, "block") : "No blocks"}
@@ -291,14 +461,38 @@ export default function Page() {
                           <Ban />
                           Blocked dates
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setRoomDialog({ room })}
-                        >
-                          <Pencil />
-                          Edit
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-muted-foreground"
+                            onClick={() => void moveRoom(index, -1)}
+                            disabled={index === 0 || reordering || loading || isFiltered}
+                            aria-label={`Move ${room.name} earlier`}
+                            title="Move earlier"
+                          >
+                            <ArrowUp />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-muted-foreground"
+                            onClick={() => void moveRoom(index, 1)}
+                            disabled={index === rooms.length - 1 || reordering || loading || isFiltered}
+                            aria-label={`Move ${room.name} later`}
+                            title="Move later"
+                          >
+                            <ArrowDown />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRoomDialog({ room })}
+                          >
+                            <Pencil />
+                            Edit
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -316,6 +510,7 @@ export default function Page() {
         }}
         room={roomDialog?.room}
         onSaved={handleSaved}
+        onDeleted={handleDeleted}
       />
 
       <BlockedDatesDialog
@@ -331,31 +526,34 @@ export default function Page() {
   );
 }
 
+const MAX_AMENITY_CHIPS = 6;
+
 function RoomAmenities({ room }: { room: Room }) {
-  const items: { label: string; icon: LucideIcon }[] = [
-    {
-      label: room.bathroom === "private" ? "Private bathroom" : "Shared bathroom",
-      icon: Bath,
-    },
-  ];
-  if (room.wifi) items.push({ label: "Wi-Fi", icon: Wifi });
-  if (room.airConditioning) items.push({ label: "A/C", icon: Snowflake });
-  if (room.heating) items.push({ label: "Heating", icon: Flame });
-  if (room.breakfast) items.push({ label: "Breakfast", icon: Coffee });
-  if (room.terrace) items.push({ label: "Terrace", icon: Sun });
-  if (room.tv) items.push({ label: "TV", icon: Tv });
+  if (room.amenities.length === 0) {
+    return <p className="mt-3 text-[11px] text-muted-foreground">No amenities listed</p>;
+  }
+
+  const shown = room.amenities.slice(0, MAX_AMENITY_CHIPS);
+  const hidden = room.amenities.length - shown.length;
 
   return (
     <div className="mt-3 flex flex-wrap gap-1.5">
-      {items.map((item) => (
+      {shown.map((amenity) => (
         <span
-          key={item.label}
-          className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+          key={amenity}
+          className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
         >
-          <item.icon className="size-3" />
-          {item.label}
+          {amenity}
         </span>
       ))}
+      {hidden > 0 ? (
+        <span
+          className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+          title={room.amenities.slice(MAX_AMENITY_CHIPS).join(", ")}
+        >
+          +{hidden} more
+        </span>
+      ) : null}
     </div>
   );
 }

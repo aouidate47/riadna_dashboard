@@ -36,13 +36,22 @@ export function buildSeed(now = new Date()) {
       return {
         id, riadId, name: r.name, capacity: r.capacity, price: r.price,
         photos: [1, 2].map((k) => `https://picsum.photos/seed/${id}-${k}/800/600`),
-        wifi: r.wifi ?? true,
-        bathroom: r.bathroom ?? (r.price >= 900 ? "private" : "shared"),
-        airConditioning: r.airConditioning ?? true,
-        heating: r.heating ?? true,
-        breakfast: r.breakfast ?? r.price >= 900,
-        terrace: r.terrace ?? r.capacity >= 3,
-        tv: r.tv ?? r.price >= 1000,
+        description: "",
+        beds: r.capacity >= 3 ? "1 double bed, 1 single bed" : "1 double bed",
+        size: 14 + r.capacity * 4,
+        amenities: [
+          "Wi-Fi",
+          "Air conditioning",
+          "Heating",
+          r.price >= 900 ? "Private bathroom" : "Shared bathroom",
+          ...(r.price >= 900 ? ["Breakfast included"] : []),
+          ...(r.capacity >= 3 ? ["Terrace"] : []),
+          ...(r.price >= 1000 ? ["TV"] : []),
+        ],
+        isActive: true,
+        sortOrder: i,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
       };
     });
     rooms.push(...riadRooms);

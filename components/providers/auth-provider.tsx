@@ -15,6 +15,8 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Re-read the riad (e.g. after editing it in /settings) so the topbar updates. */
   refreshRiad: () => Promise<void>;
+  /** Re-read the user from the session (e.g. after editing the name in /profile). */
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,6 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, riad }));
   }, []);
 
+  const refreshUser = useCallback(() => {
+    const s = session.get();
+    if (s) setState((current) => ({ ...current, user: s.user }));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
@@ -48,8 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refreshRiad,
+      refreshUser,
     }),
-    [state, login, logout, refreshRiad],
+    [state, login, logout, refreshRiad, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

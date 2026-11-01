@@ -1,4 +1,4 @@
-import type { BathroomType, Riad, User } from "@/types";
+import type { Riad, User } from "@/types";
 
 export type MockUserRecord = User & { password: string };
 
@@ -6,13 +6,6 @@ export interface RoomSeed {
   name: string;
   capacity: number;
   price: number;
-  wifi?: boolean;
-  bathroom?: BathroomType;
-  airConditioning?: boolean;
-  heating?: boolean;
-  breakfast?: boolean;
-  terrace?: boolean;
-  tv?: boolean;
 }
 
 export interface RiadConfig {

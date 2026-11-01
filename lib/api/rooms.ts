@@ -3,44 +3,77 @@ import { db } from "@/lib/mock/db";
 import { clone, delay, findConflict, requireUser } from "./_internal";
 import { publishAdminAvailability } from "./external-bookings";
 import { ApiError } from "./errors";
+import { http } from "./http";
 
+/** Same limits as platform-api. */
+export const ROOM_MAX_PHOTOS = 10;
+export const ROOM_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+export const ROOM_PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+/** Fields you can send when creating/updating a room. */
+export interface RoomInput {
+  name: string;
+  description: string;
+  capacity: number;
+  beds: string;
+  size: number;
+  price: number;
+  amenities: string[];
+  isActive: boolean;
+  /** Reorder or drop photos (dropped files are deleted). Upload new ones with uploadRoomPhoto(). */
+  photos?: string[];
+  sortOrder?: number;
+}
+
+const roomsPath = () => `/applications/${requireUser().riadId}/riadna/rooms`;
+
+/** GET …/rooms — every room of the riad, in display order (active and hidden). */
 export async function getRooms(): Promise<Room[]> {
-  const { riadId } = requireUser();
-  await delay();
-  return clone(db.rooms.filter((r) => r.riadId === riadId));
+  return http<Room[]>(roomsPath());
 }
 
 export async function getRoom(id: string): Promise<Room> {
-  const { riadId } = requireUser();
-  await delay();
-  const r = db.rooms.find((x) => x.id === id && x.riadId === riadId);
-  if (!r) throw new ApiError("NOT_FOUND", "Room not found");
-  return clone(r);
+  return http<Room>(`${roomsPath()}/${id}`);
 }
 
-function validateRoomPhotos(photos: string[] | undefined) {
-  if (photos && photos.length > 4) throw new ApiError("VALIDATION", "A room can have at most 4 photos");
+/** POST …/rooms — the new room goes to the end of the list. */
+export async function createRoom(input: RoomInput): Promise<Room> {
+  return http<Room>(roomsPath(), { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function createRoom(input: Omit<Room, "id" | "riadId">): Promise<Room> {
-  const { riadId } = requireUser();
-  await delay();
-  if (!input.name.trim() || input.capacity < 1 || input.price < 0) throw new ApiError("VALIDATION", "Invalid room data");
-  validateRoomPhotos(input.photos);
-  const room: Room = { ...input, id: `${riadId}_room_${Date.now().toString(36)}`, riadId };
-  db.rooms.push(room);
-  return clone(room);
+/** PATCH …/rooms/:id */
+export async function updateRoom(id: string, patch: Partial<RoomInput>): Promise<Room> {
+  return http<Room>(`${roomsPath()}/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 
-export async function updateRoom(id: string, patch: Partial<Omit<Room, "id" | "riadId">>): Promise<Room> {
-  const { riadId } = requireUser();
-  await delay();
-  const r = db.rooms.find((x) => x.id === id && x.riadId === riadId);
-  if (!r) throw new ApiError("NOT_FOUND", "Room not found");
-  validateRoomPhotos(patch.photos);
-  Object.assign(r, patch);
-  return clone(r);
+/** DELETE …/rooms/:id — also deletes its photo files. */
+export async function deleteRoom(id: string): Promise<void> {
+  await http<Room>(`${roomsPath()}/${id}`, { method: "DELETE" });
 }
+
+/** PATCH …/rooms/reorder — `roomIds` must list every room, in the new order. */
+export async function reorderRooms(roomIds: string[]): Promise<Room[]> {
+  return http<Room[]>(`${roomsPath()}/reorder`, { method: "PATCH", body: JSON.stringify({ roomIds }) });
+}
+
+/** POST …/rooms/:id/photos — adds the photo at the end and returns the updated room. */
+export async function uploadRoomPhoto(id: string, file: File): Promise<Room> {
+  if (!ROOM_PHOTO_TYPES.includes(file.type)) {
+    throw new ApiError("VALIDATION", `"${file.name}" must be a PNG, JPEG or WebP image`);
+  }
+  if (file.size > ROOM_PHOTO_MAX_BYTES) throw new ApiError("VALIDATION", `"${file.name}" is larger than 5 MB`);
+
+  const body = new FormData();
+  body.append("file", file);
+  return http<Room>(`${roomsPath()}/${id}/photos`, { method: "POST", body });
+}
+
+/** DELETE …/rooms/:id/photos — removes one photo and deletes its file. */
+export async function removeRoomPhoto(id: string, url: string): Promise<Room> {
+  return http<Room>(`${roomsPath()}/${id}/photos`, { method: "DELETE", body: JSON.stringify({ url }) });
+}
+
+// ─── Blocked periods: still mock data until platform-api has them ────────────
 
 export async function getBlockedPeriods(roomId?: string): Promise<BlockedPeriod[]> {
   const { riadId } = requireUser();
@@ -51,7 +84,7 @@ export async function getBlockedPeriods(roomId?: string): Promise<BlockedPeriod[
 export async function createBlockedPeriod(input: Omit<BlockedPeriod, "id" | "riadId">): Promise<BlockedPeriod> {
   const { riadId } = requireUser();
   await delay();
-  if (!db.rooms.some((r) => r.id === input.roomId && r.riadId === riadId)) throw new ApiError("NOT_FOUND", "Room not found");
+  // Rooms now live in platform-api, so the room id is not checked against the mock data here.
   if (input.from >= input.to) throw new ApiError("VALIDATION", "End date must be after start date");
   if (findConflict(riadId, input.roomId, input.from, input.to)) throw new ApiError("CONFLICT", "Dates overlap an existing booking or block");
   const block: BlockedPeriod = { ...input, id: `${riadId}_block_${Date.now().toString(36)}`, riadId };
