@@ -40,7 +40,7 @@ import {
 import { BookingDialog } from "@/components/bookings/booking-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getBlockedPeriods, getBookings, getRooms, updateBooking } from "@/lib/api";
+import { getBlockedPeriods, getBookings, getRooms, listBookings, updateBooking } from "@/lib/api";
 import { BOOKING_SOURCE_LABELS, BOOKING_STATUS_LABELS } from "@/lib/booking-labels";
 import { nightsBetween, toISODate, todayISO } from "@/lib/dates";
 import { formatDate, formatMoney, pluralize } from "@/lib/format";
@@ -274,13 +274,9 @@ export default function Page() {
     setHighlightedId(null);
 
     try {
-      const all = await getBookings();
-      const found = all.find(
-        (booking) =>
-          booking.code?.toUpperCase() === code ||
-          booking.id.toUpperCase() === `EXT_${code}` ||
-          booking.id.toUpperCase().endsWith(`_${code}`),
-      );
+      // The server search matches part of a code; keep only the exact one.
+      const { items } = await listBookings({ search: code }, { pageSize: 20 });
+      const found = items.find((booking) => booking.code.toUpperCase() === code);
       if (!found) {
         setSearchError(`No reservation found for ${code}.`);
         return;
@@ -733,7 +729,7 @@ function BookingLookupCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-            Reservation {booking.code ?? booking.id.replace(/^ext_/i, "")}
+            Reservation {booking.code}
           </p>
           <h3 className="mt-1 font-display text-lg font-semibold">{booking.guestName}</h3>
           <p className="text-sm text-muted-foreground">

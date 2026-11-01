@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { addDays, parseISO } from "date-fns";
+import { useEffect, useRef, useState } from "react";
+import { addDays, addMonths, endOfMonth, parseISO, startOfMonth } from "date-fns";
 import { Loader2 } from "lucide-react";
-import { createBooking, updateBooking } from "@/lib/api";
+import { createBooking, getBlockedPeriods, getBookings, updateBooking } from "@/lib/api";
 import { ALLOWED_TRANSITIONS } from "@/lib/booking-status";
 import { BOOKING_SOURCE_LABELS, BOOKING_STATUS_LABELS } from "@/lib/booking-labels";
 import { nightsBetween, toISODate, todayISO } from "@/lib/dates";
@@ -22,9 +22,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { buildTakenNights, isStayFree, StayDatePicker } from "./stay-date-picker";
 
 const SOURCES: BookingSource[] = ["direct", "booking.com", "airbnb.com", "riadna.ma", "phone", "walk-in"];
 const NEW_STATUSES: BookingStatus[] = ["PENDING", "CONFIRMED", "CHECKED_IN"];
+const NO_NIGHTS = new Set<string>();
+
+/** Availability is loaded for a 12-month window starting the month before `month`. */
+function availabilityWindow(month: Date) {
+  const start = addMonths(startOfMonth(month), -1);
+  return { from: toISODate(start), to: toISODate(addMonths(start, 12)) };
+}
+
+type Availability = { from: string; to: string; taken: Map<string, Set<string>> };
 
 interface BookingDialogProps {
   open: boolean;
@@ -99,9 +109,50 @@ function BookingForm({
   const [notes, setNotes] = useState(booking?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [availability, setAvailability] = useState<Availability | null>(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const requestRef = useRef(0);
 
   const selectedRoom = rooms.find((room) => room.id === roomId);
-  const nights = checkIn < checkOut ? nightsBetween(checkIn, checkOut) : 0;
+  const nights = checkIn && checkOut && checkIn < checkOut ? nightsBetween(checkIn, checkOut) : 0;
+  const takenNights = availability?.taken.get(roomId) ?? NO_NIGHTS;
+  const selectionIsFree = isStayFree(takenNights, checkIn, checkOut);
+
+  /** Loads every booking and blocked period around `month`, for all rooms. */
+  function fetchAvailability(month: Date) {
+    const window = availabilityWindow(month);
+    const request = ++requestRef.current;
+
+    return Promise.all([getBookings(window), getBlockedPeriods()])
+      .then(([bookings, blocks]) => {
+        if (request !== requestRef.current) return; // a newer request won
+        // When editing, the booking's own nights don't count as taken.
+        setAvailability({ ...window, taken: buildTakenNights(bookings, blocks, booking?.id) });
+        setAvailabilityError(null);
+      })
+      .catch((err: unknown) => {
+        if (request !== requestRef.current) return;
+        setAvailabilityError(err instanceof Error ? err.message : "Could not load availability.");
+      })
+      .finally(() => {
+        if (request === requestRef.current) setAvailabilityLoading(false);
+      });
+  }
+
+  useEffect(() => {
+    void fetchAvailability(parseISO(initialCheckIn));
+    // Load once for the month the form opens on; later months load on navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleVisibleMonth(month: Date) {
+    const monthStart = toISODate(startOfMonth(month));
+    const monthEnd = toISODate(endOfMonth(month));
+    if (availability && monthStart >= availability.from && monthEnd < availability.to) return;
+    setAvailabilityLoading(true);
+    void fetchAvailability(month);
+  }
   const statusOptions = booking
     ? [booking.status, ...ALLOWED_TRANSITIONS[booking.status]]
     : NEW_STATUSES;
@@ -117,17 +168,30 @@ function BookingForm({
 
   function changeRoom(nextRoomId: string) {
     setRoomId(nextRoomId);
+
+    // If the new room is taken on the chosen dates, make the user pick again.
+    const nextTaken = availability?.taken.get(nextRoomId);
+    if (!isStayFree(nextTaken, checkIn, checkOut)) {
+      const keepCheckIn = !nextTaken?.has(checkIn);
+      setCheckIn(keepCheckIn ? checkIn : "");
+      setCheckOut("");
+      recalculateTotal(nextRoomId, "", "");
+      setError(null);
+      return;
+    }
     recalculateTotal(nextRoomId, checkIn, checkOut);
   }
 
-  function changeCheckIn(nextCheckIn: string) {
+  function changeDates(nextCheckIn: string, nextCheckOut: string) {
     setCheckIn(nextCheckIn);
-    recalculateTotal(roomId, nextCheckIn, checkOut);
+    setCheckOut(nextCheckOut);
+    recalculateTotal(roomId, nextCheckIn, nextCheckOut);
   }
 
-  function changeCheckOut(nextCheckOut: string) {
-    setCheckOut(nextCheckOut);
-    recalculateTotal(roomId, checkIn, nextCheckOut);
+  /** Room list label: shows when a room is taken on the chosen dates. */
+  function roomLabel(room: Room) {
+    const taken = Boolean(checkIn && checkOut) && !isStayFree(availability?.taken.get(room.id), checkIn, checkOut);
+    return `${room.name} · ${formatMoney(room.price)}/night${taken ? " — taken on these dates" : ""}`;
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -138,11 +202,14 @@ function BookingForm({
     if (!selectedRoom) return setError("Choose a room.");
     if (!checkIn || !checkOut) return setError("Choose both check-in and check-out dates.");
     if (checkIn >= checkOut) return setError("Check-out must be after check-in.");
+    if (!selectionIsFree && status !== "CANCELLED") {
+      return setError(`${selectedRoom.name} is already booked or blocked on some of these nights. Pick other dates.`);
+    }
     if (guests < 1 || guests > selectedRoom.capacity) {
       return setError(`${selectedRoom.name} sleeps ${pluralize(selectedRoom.capacity, "guest")} max.`);
     }
-    if (!Number.isFinite(total) || !Number.isFinite(paid)) {
-      return setError("Enter valid amounts.");
+    if (!Number.isInteger(total) || !Number.isInteger(paid)) {
+      return setError("Amounts must be whole dirhams (no decimals).");
     }
     if (total < 0 || paid < 0) return setError("Amounts cannot be negative.");
     if (paid > total) return setError("Paid cannot be more than the total.");
@@ -252,7 +319,7 @@ function BookingForm({
             >
               {rooms.map((room) => (
                 <option key={room.id} value={room.id}>
-                  {room.name} · {formatMoney(room.price)}/night
+                  {roomLabel(room)}
                 </option>
               ))}
             </Select>
@@ -274,33 +341,33 @@ function BookingForm({
             />
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="booking-check-in">Check-in</Label>
-            <Input
-              id="booking-check-in"
-              type="date"
-              value={checkIn}
-              onChange={(event) => changeCheckIn(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="booking-check-out">Check-out</Label>
-            <Input
-              id="booking-check-out"
-              type="date"
-              min={checkIn ? toISODate(addDays(parseISO(checkIn), 1)) : undefined}
-              value={checkOut}
-              onChange={(event) => changeCheckOut(event.target.value)}
-            />
-          </div>
+        <div className="grid gap-2">
+          <Label>Dates</Label>
+          <StayDatePicker
+            checkIn={checkIn}
+            checkOut={checkOut}
+            takenNights={takenNights}
+            loading={availabilityLoading}
+            onChange={changeDates}
+            onVisibleMonthChange={handleVisibleMonth}
+          />
+          {availabilityError ? (
+            <p className="text-xs text-destructive">
+              Couldn&apos;t load availability ({availabilityError}). You can still save; the server checks for overlaps.
+            </p>
+          ) : !selectionIsFree ? (
+            <p className="text-xs text-destructive">
+              {selectedRoom?.name ?? "This room"} is taken on some of these nights. Pick other dates.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Click the check-in day, then the check-out day.
+              {selectedRoom && nights > 0
+                ? ` ${pluralize(nights, "night")} · ${formatMoney(nights * selectedRoom.price)} at the current room rate.`
+                : ""}
+            </p>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          {nights > 0 ? pluralize(nights, "night") : "Select valid dates"}
-          {selectedRoom && nights > 0
-            ? ` · ${formatMoney(nights * selectedRoom.price)} at the current room rate`
-            : ""}
-        </p>
       </fieldset>
 
       <fieldset className="grid gap-4">

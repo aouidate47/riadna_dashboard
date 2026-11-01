@@ -72,7 +72,8 @@ The demo account box is shown in development only.
 | `npm run build` | Create a production build |
 | `npm start` | Start the production server |
 | `npm run lint` | Run ESLint |
-| `npm run verify` | Run the data and tenancy checks |
+
+Data now comes from [platform-api](https://github.com/Elharfali8/platform-api). Set its URL in `.env.local` (`NEXT_PUBLIC_API_URL=http://localhost:3000`) and run the dashboard on port 4040 (`npm run dev -- -p 4040`). Tenancy and booking rules are enforced and tested there.
 
 ## Stack
 

@@ -21,15 +21,15 @@ export interface Room {
 }
 
 /**
- * EXTRA (not in the original contract, needed by the "block dates" modal).
+ * Dates a room can't be booked. Matches platform-api: …/riadna/blocked-periods
  * `from` inclusive, `to` exclusive: same semantics as checkIn/checkOut.
- * The backend needs a matching entity.
  */
 export interface BlockedPeriod {
   id: string;
   riadId: string;
   roomId: string;
-  from: string; // ISO date
-  to: string; // ISO date
-  reason?: string;
+  from: string; // YYYY-MM-DD
+  to: string; // YYYY-MM-DD
+  reason?: string | null;
+  createdAt?: string;
 }

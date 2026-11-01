@@ -1,7 +1,5 @@
 import type { BlockedPeriod, Room } from "@/types";
-import { db } from "@/lib/mock/db";
-import { clone, delay, findConflict, requireUser } from "./_internal";
-import { publishAdminAvailability } from "./external-bookings";
+import { requireUser } from "./_internal";
 import { ApiError } from "./errors";
 import { http } from "./http";
 
@@ -73,31 +71,24 @@ export async function removeRoomPhoto(id: string, url: string): Promise<Room> {
   return http<Room>(`${roomsPath()}/${id}/photos`, { method: "DELETE", body: JSON.stringify({ url }) });
 }
 
-// ─── Blocked periods: still mock data until platform-api has them ────────────
+// ─── Blocked periods: dates a room can't be booked ───────────────────────────
 
+const blockedPeriodsPath = () => `/applications/${requireUser().riadId}/riadna/blocked-periods`;
+
+/** GET …/blocked-periods (optionally for one room). */
 export async function getBlockedPeriods(roomId?: string): Promise<BlockedPeriod[]> {
-  const { riadId } = requireUser();
-  await delay();
-  return clone(db.blocks.filter((b) => b.riadId === riadId && (!roomId || b.roomId === roomId)));
+  return http<BlockedPeriod[]>(blockedPeriodsPath() + (roomId ? `?roomId=${encodeURIComponent(roomId)}` : ""));
 }
 
-export async function createBlockedPeriod(input: Omit<BlockedPeriod, "id" | "riadId">): Promise<BlockedPeriod> {
-  const { riadId } = requireUser();
-  await delay();
-  // Rooms now live in platform-api, so the room id is not checked against the mock data here.
+/** POST …/blocked-periods — 409 if the dates overlap a booking or another block. */
+export async function createBlockedPeriod(
+  input: Pick<BlockedPeriod, "roomId" | "from" | "to"> & { reason?: string },
+): Promise<BlockedPeriod> {
   if (input.from >= input.to) throw new ApiError("VALIDATION", "End date must be after start date");
-  if (findConflict(riadId, input.roomId, input.from, input.to)) throw new ApiError("CONFLICT", "Dates overlap an existing booking or block");
-  const block: BlockedPeriod = { ...input, id: `${riadId}_block_${Date.now().toString(36)}`, riadId };
-  db.blocks.push(block);
-  await publishAdminAvailability();
-  return clone(block);
+  return http<BlockedPeriod>(blockedPeriodsPath(), { method: "POST", body: JSON.stringify(input) });
 }
 
+/** DELETE …/blocked-periods/:id */
 export async function deleteBlockedPeriod(id: string): Promise<void> {
-  const { riadId } = requireUser();
-  await delay();
-  const i = db.blocks.findIndex((b) => b.id === id && b.riadId === riadId);
-  if (i === -1) throw new ApiError("NOT_FOUND", "Blocked period not found");
-  db.blocks.splice(i, 1);
-  await publishAdminAvailability();
+  await http<BlockedPeriod>(`${blockedPeriodsPath()}/${id}`, { method: "DELETE" });
 }

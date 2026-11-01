@@ -10,6 +10,7 @@ const SOURCES: [BookingSource, number][] = [["direct", 0.3], ["booking.com", 0.3
 
 const slugify = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]+/g, ".").replace(/^\.|\.$/g, "");
 const round10 = (n: number) => Math.round(n / 10) * 10;
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".split("");
 
 /** Builds a fresh dataset relative to "now": bookings span the current month and the next one. */
 export function buildSeed(now = new Date()) {
@@ -84,6 +85,7 @@ export function buildSeed(now = new Date()) {
       else if (status === "CONFIRMED") paid = rnd() < 0.5 ? round10(total * 0.3) : 0;
       const created = subDays(new Date(ci), int(3, 40));
       drafts.push({
+        code: `RDN-${Array.from({ length: 6 }, () => pick(CODE_ALPHABET)).join("")}`,
         riadId, roomId: room.id, guestName: g.name, email: `${slugify(g.name)}@${pick(MAIL_DOMAINS)}`,
         phone: `${g.dial} ${int(100, 999)} ${int(100, 999)} ${int(100, 999)}`, country: g.country, guests,
         checkIn: ci, checkOut: co, status, source: pickSource(), total, paid,

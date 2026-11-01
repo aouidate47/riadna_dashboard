@@ -17,14 +17,16 @@ export interface BookingFilters {
   /** Returns bookings whose stay overlaps [from, to). ISO dates. */
   from?: string;
   to?: string;
-  /** Case/accent-insensitive match on guestName. */
+  /** Case-insensitive match on guest name or booking code. */
   search?: string;
   sortBy?: "checkIn" | "createdAt";
   sortDir?: "asc" | "desc";
 }
 
-export type CreateBookingInput = Omit<Booking, "id" | "riadId" | "createdAt" | "paid"> & { paid?: number };
-export type UpdateBookingInput = Partial<Omit<Booking, "id" | "riadId" | "createdAt">>;
+/** The server sets id, code, riadId and the timestamps. */
+type ServerFields = "id" | "code" | "riadId" | "createdAt" | "updatedAt";
+export type CreateBookingInput = Omit<Booking, ServerFields | "paid"> & { paid?: number };
+export type UpdateBookingInput = Partial<Omit<Booking, ServerFields>>;
 
 /** revenueThisMonth is null for STAFF (the backend must do the same). */
 export interface DashboardStats {
