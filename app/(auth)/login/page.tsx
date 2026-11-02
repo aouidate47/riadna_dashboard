@@ -362,12 +362,12 @@ export default function LoginPage() {
         <footer className="relative flex shrink-0 items-center justify-between gap-3 pt-3 text-[11px] text-muted-foreground">
           <p>© 2026 Riadna. All rights reserved.</p>
           <a
-            href="https://yaranagency.netlify.app/"
+            href="https://creaovo.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold text-gold hover:text-primary"
           >
-            powered by yaran
+            powered by creaovo
           </a>
         </footer>
       </section>
