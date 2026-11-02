@@ -365,7 +365,7 @@ export default function LoginPage() {
             href="https://creaovo.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-gold hover:text-primary"
+            className="bg-gradient-to-r from-violet-500 to-cyan-400 bg-clip-text font-semibold text-transparent transition-opacity hover:opacity-80"
           >
             powered by creaovo
           </a>
