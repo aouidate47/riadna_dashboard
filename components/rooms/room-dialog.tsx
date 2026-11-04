@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { prepareImageFile } from "@/lib/prepare-image";
 import { cn } from "@/lib/utils";
 
 const SUGGESTED_AMENITIES = [
@@ -42,41 +43,13 @@ const SUGGESTED_AMENITIES = [
   "Minibar",
 ];
 
-/** Phone photos above the limit are resized to this longest edge. */
-const RESIZE_MAX_EDGE = 2400;
-
 /** A saved photo (src = its URL) or one picked but not uploaded yet (file set, src = local preview). */
 type PhotoItem = { key: string; src: string; file?: File };
 
 let photoKeySeq = 0;
 const nextPhotoKey = () => `photo-${++photoKeySeq}`;
 
-/** Makes a picked file uploadable: PNG/JPEG/WebP and at most 5 MB (bigger photos are resized to JPEG). */
-async function prepareFile(file: File): Promise<File> {
-  if (!ROOM_PHOTO_TYPES.includes(file.type)) {
-    throw new Error(`"${file.name}" must be a PNG, JPEG or WebP image.`);
-  }
-  if (file.size <= ROOM_PHOTO_MAX_BYTES) return file;
-
-  const bitmap = await createImageBitmap(file);
-  try {
-    const scale = Math.min(1, RESIZE_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error(`Could not resize "${file.name}".`);
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-    if (!blob || blob.size > ROOM_PHOTO_MAX_BYTES) throw new Error(`"${file.name}" is too large, even after resizing.`);
-    return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
-  } finally {
-    bitmap.close();
-  }
-}
+const prepareFile = (file: File) => prepareImageFile(file, ROOM_PHOTO_MAX_BYTES);
 
 export function RoomDialog({
   open,

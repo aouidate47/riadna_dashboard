@@ -1,4 +1,13 @@
-import { BedDouble, CalendarDays, ClipboardList, LayoutDashboard, Settings, Users, type LucideIcon } from "lucide-react";
+import {
+  BedDouble,
+  CalendarDays,
+  ClipboardList,
+  LayoutDashboard,
+  Settings,
+  Sparkles,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import type { UserRole } from "@/types";
 
 export interface NavItem {
@@ -14,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/bookings", label: "Bookings", icon: ClipboardList },
   { href: "/rooms", label: "Rooms", icon: BedDouble },
+  { href: "/experiences", label: "Experiences", icon: Sparkles },
   { href: "/guests", label: "Guests", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["OWNER"] },
 ];
