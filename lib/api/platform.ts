@@ -50,12 +50,31 @@ export function toUser(profile: PlatformProfile, entry: PlatformProfile["applica
   };
 }
 
+/** GET/PATCH /applications/:riadId/riadna/riad: the application plus the riad's profile. */
+export interface PlatformRiad extends PlatformApplication {
+  address: string;
+  city: string;
+  phone: string;
+  whatsapp: string;
+  latitude: number | null;
+  longitude: number | null;
+  checkInTime: string;
+  checkOutTime: string;
+  cancellationPolicy: string;
+  touristTaxPerAdultPerNight: number;
+  tagline: string;
+  about: string;
+  highlights: string[];
+  heroImage: string | null;
+  isPublished: boolean;
+}
+
 /**
- * platform-api only stores name, slug and logo. The other riad fields are kept from
- * `previous` (in memory) until the backend has columns for them.
+ * Builds the riad from either response. A bare application (login, logo upload) only
+ * carries name, slug and logo, so the other fields are kept from `previous`.
  */
-export function toRiad(app: PlatformApplication, previous?: Riad | null): Riad {
-  return {
+export function toRiad(app: PlatformApplication | PlatformRiad, previous?: Riad | null): Riad {
+  const base: Riad = {
     address: "",
     phone: "",
     checkInTime: "14:00",
@@ -65,5 +84,25 @@ export function toRiad(app: PlatformApplication, previous?: Riad | null): Riad {
     name: app.name,
     slug: app.slug,
     logo: app.logoUrl ?? undefined,
+  };
+  if (!("checkInTime" in app)) return base;
+
+  return {
+    ...base,
+    address: app.address,
+    city: app.city,
+    phone: app.phone,
+    whatsapp: app.whatsapp,
+    latitude: app.latitude ?? undefined,
+    longitude: app.longitude ?? undefined,
+    checkInTime: app.checkInTime,
+    checkOutTime: app.checkOutTime,
+    cancellationPolicy: app.cancellationPolicy,
+    touristTaxPerAdultPerNight: app.touristTaxPerAdultPerNight,
+    tagline: app.tagline,
+    about: app.about,
+    highlights: app.highlights,
+    heroImage: app.heroImage ?? undefined,
+    isPublished: app.isPublished,
   };
 }

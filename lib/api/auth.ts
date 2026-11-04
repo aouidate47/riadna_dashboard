@@ -5,6 +5,7 @@ import { MOCK_USERS } from "@/lib/mock/data";
 import { ApiError } from "./errors";
 import { http } from "./http";
 import { pickMembership, toRiad, toUser, type LoginResponse, type PlatformProfile } from "./platform";
+import { getCurrentRiad } from "./riad";
 
 /** POST /auth/login, then GET /auth/profile to find the user's riad. */
 export async function login(email: string, password: string): Promise<{ user: User; riad: Riad; mustChangePassword: boolean }> {
@@ -19,9 +20,10 @@ export async function login(email: string, password: string): Promise<{ user: Us
   if (!entry) throw new ApiError("FORBIDDEN", "This account is not linked to any riad yet");
 
   const user = toUser(profile, entry);
-  const riad = toRiad(entry.application);
+  session.set({ token: accessToken, user, riad: toRiad(entry.application), mustChangePassword });
 
-  session.set({ token: accessToken, user, riad, mustChangePassword });
+  // The profile only carries name/slug/logo; load the riad's details too (check-in time, etc.).
+  const riad = await getCurrentRiad().catch(() => session.get()!.riad);
   return { user, riad, mustChangePassword };
 }
 

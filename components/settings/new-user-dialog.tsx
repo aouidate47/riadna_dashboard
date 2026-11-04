@@ -2,8 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
-import { createTeamUser } from "@/lib/api";
-import type { User, UserRole } from "@/types";
+import { addTeamMember } from "@/lib/api";
+import type { TeamMember, TeamRole } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,7 +24,7 @@ export function NewUserDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: (user: User) => void;
+  onCreated: (member: TeamMember, existingAccount: boolean) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,12 +44,12 @@ function NewUserForm({
   onCreated,
   onCancel,
 }: {
-  onCreated: (user: User) => void;
+  onCreated: (member: TeamMember, existingAccount: boolean) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<UserRole>("STAFF");
+  const [role, setRole] = useState<TeamRole>("STAFF");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -66,8 +66,8 @@ function NewUserForm({
 
     setSaving(true);
     try {
-      const user = await createTeamUser({ name, email, role, password });
-      onCreated(user);
+      const { existingAccount, ...member } = await addTeamMember({ name, email, role, temporaryPassword: password });
+      onCreated(member, existingAccount);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add the user.");
       setSaving(false);
@@ -118,7 +118,7 @@ function NewUserForm({
           <Select
             id="new-user-role"
             value={role}
-            onChange={(event) => setRole(event.target.value as UserRole)}
+            onChange={(event) => setRole(event.target.value as TeamRole)}
           >
             <option value="STAFF">Staff</option>
             <option value="OWNER">Owner</option>
@@ -138,7 +138,7 @@ function NewUserForm({
             autoComplete="new-password"
           />
           <p className="text-xs text-muted-foreground">
-            Share it with the teammate securely. They can change it later.
+            Share it securely. They choose their own at first sign-in. Ignored if the email already has an account.
           </p>
         </div>
       </div>

@@ -10,8 +10,6 @@ import {
   MapPin,
   Save,
   ShieldCheck,
-  UserPlus,
-  Users,
   X,
 } from "lucide-react";
 import { AuthGuard } from "@/components/providers/auth-guard";
@@ -20,31 +18,53 @@ import {
   LocationPickerDialog,
   type Coordinates,
 } from "@/components/settings/location-picker-dialog";
-import { NewUserDialog } from "@/components/settings/new-user-dialog";
+import { RiadHeroImageField } from "@/components/settings/riad-hero-image-field";
 import { RiadLogoField } from "@/components/settings/riad-logo-field";
+import { TeamSection } from "@/components/settings/team-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getCurrentRiad, getStaffUsers, updateRiad } from "@/lib/api";
-import { cn, initials } from "@/lib/utils";
-import type { Riad, User } from "@/types";
+import { getCurrentRiad, updateRiad } from "@/lib/api";
+import type { Riad } from "@/types";
 
-type RiadForm = Pick<
-  Riad,
-  "name" | "address" | "phone" | "checkInTime" | "checkOutTime" | "latitude" | "longitude" | "about"
->;
+/** Every value is a primitive so "dirty" is a plain comparison. Highlights are one per line. */
+interface RiadForm {
+  name: string;
+  address: string;
+  city: string;
+  phone: string;
+  whatsapp: string;
+  checkInTime: string;
+  checkOutTime: string;
+  latitude?: number;
+  longitude?: number;
+  about: string;
+  tagline: string;
+  highlights: string;
+  cancellationPolicy: string;
+  touristTax: number;
+  isPublished: boolean;
+}
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MAX_HIGHLIGHTS = 6;
 
 const toForm = (riad: Riad): RiadForm => ({
   name: riad.name,
   address: riad.address,
+  city: riad.city ?? "",
   phone: riad.phone,
+  whatsapp: riad.whatsapp ?? "",
   checkInTime: riad.checkInTime,
   checkOutTime: riad.checkOutTime,
   latitude: riad.latitude,
   longitude: riad.longitude,
   about: riad.about ?? "",
+  tagline: riad.tagline ?? "",
+  highlights: (riad.highlights ?? []).join("\n"),
+  cancellationPolicy: riad.cancellationPolicy ?? "",
+  touristTax: riad.touristTaxPerAdultPerNight ?? 0,
+  isPublished: riad.isPublished ?? false,
 });
 
 export default function Page() {
@@ -60,7 +80,6 @@ function SettingsContent() {
   const [current, setCurrent] = useState<Riad | null>(null);
   const [form, setForm] = useState<RiadForm | null>(null);
   const [baseline, setBaseline] = useState<RiadForm | null>(null);
-  const [staff, setStaff] = useState<User[]>([]);
   const [dataReady, setDataReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,18 +87,16 @@ function SettingsContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
-  const [newUserOpen, setNewUserOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getCurrentRiad(), getStaffUsers()])
-      .then(([riad, users]) => {
+    getCurrentRiad()
+      .then((riad) => {
         if (cancelled) return;
         const next = toForm(riad);
         setCurrent(riad);
         setForm(next);
         setBaseline(next);
-        setStaff(users);
         setError(null);
         setLoading(false);
         setDataReady(true);
@@ -100,10 +117,6 @@ function SettingsContent() {
     !!form &&
     !!baseline &&
     (Object.keys(form) as (keyof RiadForm)[]).some((key) => form[key] !== baseline[key]);
-  const sortedStaff = [...staff].sort((a, b) => {
-    if (a.role !== b.role) return a.role === "OWNER" ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
 
   function update<K extends keyof RiadForm>(key: K, value: RiadForm[K]) {
     setForm((currentForm) => (currentForm ? { ...currentForm, [key]: value } : currentForm));
@@ -121,24 +134,46 @@ function SettingsContent() {
     setError(null);
     setNotice(null);
 
-    const next: RiadForm = {
-      name: form.name.trim(),
-      address: form.address.trim(),
-      phone: form.phone.trim(),
-      checkInTime: form.checkInTime,
-      checkOutTime: form.checkOutTime,
-      latitude: form.latitude,
-      longitude: form.longitude,
-      about: (form.about ?? "").trim(),
-    };
-    if (!next.name) return setError("Enter the riad name.");
-    // Address and phone are optional until platform-api stores them (see updateRiad).
-    if (!TIME_PATTERN.test(next.checkInTime)) return setError("Enter a valid check-in time.");
-    if (!TIME_PATTERN.test(next.checkOutTime)) return setError("Enter a valid check-out time.");
+    const name = form.name.trim();
+    const whatsapp = form.whatsapp.replace(/[\s+()-]/g, "");
+    const highlights = form.highlights
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (!name) return setError("Enter the riad name.");
+    if (!TIME_PATTERN.test(form.checkInTime)) return setError("Enter a valid check-in time.");
+    if (!TIME_PATTERN.test(form.checkOutTime)) return setError("Enter a valid check-out time.");
+    if (whatsapp && !/^\d{8,15}$/.test(whatsapp)) {
+      return setError("Enter the WhatsApp number with its country code, e.g. 212600000000.");
+    }
+    if (highlights.length > MAX_HIGHLIGHTS) return setError(`Keep it to ${MAX_HIGHLIGHTS} highlights.`);
+    if (highlights.some((line) => line.length > 60)) return setError("Each highlight must be 60 characters or fewer.");
+    if (!Number.isInteger(form.touristTax) || form.touristTax < 0) {
+      return setError("The tourist tax must be a whole number of MAD.");
+    }
+    if (form.isPublished && !whatsapp) {
+      return setError("Add a WhatsApp number before publishing: guests use it to contact you.");
+    }
 
     setSaving(true);
     try {
-      const updated = await updateRiad(next);
+      // The pin is saved by the map dialog, so it isn't sent here.
+      const updated = await updateRiad({
+        name,
+        address: form.address.trim(),
+        city: form.city.trim(),
+        phone: form.phone.trim(),
+        whatsapp,
+        checkInTime: form.checkInTime,
+        checkOutTime: form.checkOutTime,
+        about: form.about.trim(),
+        tagline: form.tagline.trim(),
+        highlights,
+        cancellationPolicy: form.cancellationPolicy.trim(),
+        touristTaxPerAdultPerNight: form.touristTax,
+        isPublished: form.isPublished,
+      });
       const saved = toForm(updated);
       setCurrent(updated);
       setForm(saved);
@@ -171,19 +206,13 @@ function SettingsContent() {
     await refreshRiad().catch(() => undefined);
   }
 
-  function handleLogoChanged(updated: Riad, message: string) {
+  function handleImageChanged(updated: Riad, message: string) {
     setCurrent(updated);
     setError(null);
     setNotice(message);
     refreshRiad().catch(() => undefined);
   }
 
-  function handleUserCreated(member: User) {
-    setStaff((currentStaff) => [...currentStaff, member]);
-    setNewUserOpen(false);
-    setError(null);
-    setNotice(`${member.name} added to the team.`);
-  }
 
   return (
     <div className="space-y-5">
@@ -243,7 +272,7 @@ function SettingsContent() {
             </header>
 
             <form onSubmit={submit} noValidate className="grid gap-5 p-5">
-              <RiadLogoField riad={current} onChanged={handleLogoChanged} onError={setError} />
+              <RiadLogoField riad={current} onChanged={handleImageChanged} onError={setError} />
 
               <div className="grid gap-2">
                 <Label htmlFor="settings-name">Riad name</Label>
@@ -254,14 +283,27 @@ function SettingsContent() {
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="settings-address">Address</Label>
-                <Textarea
-                  id="settings-address"
-                  value={form.address}
-                  onChange={(event) => update("address", event.target.value)}
-                  rows={3}
-                />
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-address">Address</Label>
+                  <Textarea
+                    id="settings-address"
+                    value={form.address}
+                    onChange={(event) => update("address", event.target.value)}
+                    maxLength={300}
+                    rows={2}
+                  />
+                </div>
+                <div className="grid content-start gap-2">
+                  <Label htmlFor="settings-city">City</Label>
+                  <Input
+                    id="settings-city"
+                    value={form.city}
+                    onChange={(event) => update("city", event.target.value)}
+                    placeholder="Marrakech"
+                    maxLength={80}
+                  />
+                </div>
               </div>
 
               <div className="grid gap-2">
@@ -313,9 +355,16 @@ function SettingsContent() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="settings-slug">Workspace slug</Label>
-                  <Input id="settings-slug" value={current.slug} disabled />
-                  <p className="text-xs text-muted-foreground">Contact support to change this.</p>
+                  <Label htmlFor="settings-whatsapp">WhatsApp</Label>
+                  <Input
+                    id="settings-whatsapp"
+                    type="tel"
+                    inputMode="numeric"
+                    value={form.whatsapp}
+                    onChange={(event) => update("whatsapp", event.target.value)}
+                    placeholder="212600000000"
+                  />
+                  <p className="text-xs text-muted-foreground">With the country code. Guests message you here.</p>
                 </div>
               </div>
 
@@ -340,20 +389,96 @@ function SettingsContent() {
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="settings-about-the-riad">About the riad</Label>
-                <Textarea
-                  id="settings-about-the-riad"
-                  value={form.about}
-                  onChange={(event) => update("about", event.target.value)}
-                  className="min-h-[100px]"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-tourist-tax">Tourist tax (MAD)</Label>
+                  <Input
+                    id="settings-tourist-tax"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.touristTax}
+                    onChange={(event) => update("touristTax", Number(event.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Per adult per night. Children are exempt.</p>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-slug">Booking site address</Label>
+                  <Input id="settings-slug" value={current.slug} disabled />
+                  <p className="text-xs text-muted-foreground">Contact support to change this.</p>
+                </div>
               </div>
 
-              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                The logo and riad name are saved to the server. The other details are kept only until
-                you log out, for now.
-              </p>
+              <div className="grid gap-2">
+                <Label htmlFor="settings-cancellation">Cancellation policy</Label>
+                <Textarea
+                  id="settings-cancellation"
+                  value={form.cancellationPolicy}
+                  onChange={(event) => update("cancellationPolicy", event.target.value)}
+                  placeholder="Free cancellation up to 7 days before arrival…"
+                  maxLength={2000}
+                  rows={2}
+                />
+                <p className="text-xs text-muted-foreground">Guests agree to this before booking.</p>
+              </div>
+
+              <div className="grid gap-5 border-t border-border pt-5">
+                <div>
+                  <h4 className="text-sm font-semibold">Booking site</h4>
+                  <p className="text-xs text-muted-foreground">What guests see on your landing page.</p>
+                </div>
+
+                <RiadHeroImageField riad={current} onChanged={handleImageChanged} onError={setError} />
+
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-tagline">Tagline</Label>
+                  <Input
+                    id="settings-tagline"
+                    value={form.tagline}
+                    onChange={(event) => update("tagline", event.target.value)}
+                    placeholder="A quiet courtyard in the heart of the medina"
+                    maxLength={160}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-about-the-riad">About the riad</Label>
+                  <Textarea
+                    id="settings-about-the-riad"
+                    value={form.about}
+                    onChange={(event) => update("about", event.target.value)}
+                    maxLength={5000}
+                    className="min-h-[100px]"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-highlights">Highlights</Label>
+                  <Textarea
+                    id="settings-highlights"
+                    value={form.highlights}
+                    onChange={(event) => update("highlights", event.target.value)}
+                    placeholder={"Pool courtyard\nRooftop breakfast\n5 min from Jemaa el-Fna"}
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">One per line, up to {MAX_HIGHLIGHTS}.</p>
+                </div>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/20 px-3 py-2.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.isPublished}
+                    onChange={(event) => update("isPublished", event.target.checked)}
+                    className="mt-0.5 size-4 accent-primary"
+                  />
+                  <span>
+                    <span className="block font-medium">Published on the booking site</span>
+                    <span className="block text-xs text-muted-foreground">
+                      When off, guests can&apos;t find or book the riad online.
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                 <p className="text-xs text-muted-foreground">
@@ -379,59 +504,17 @@ function SettingsContent() {
           </section>
 
           <div className="space-y-5">
-            <section className="rounded-lg border border-border bg-card shadow-sm">
-              <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Users className="size-[18px]" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-base font-semibold">Team access</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {staff.length} account{staff.length === 1 ? "" : "s"} for this riad
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0"
-                  onClick={() => setNewUserOpen(true)}
-                >
-                  <UserPlus />
-                  New user
-                </Button>
-              </header>
-              <ul className="divide-y divide-border">
-                {sortedStaff.map((member) => (
-                  <li key={member.id} className="flex items-center gap-3 px-5 py-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                      {initials(member.name)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium">{member.name}</p>
-                        {member.id === user?.id ? (
-                          <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
-                            You
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">{member.email}</p>
-                    </div>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                        member.role === "OWNER"
-                          ? "bg-primary/10 text-primary"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {member.role === "OWNER" ? "Owner" : "Staff"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <TeamSection
+              currentUserId={user?.id}
+              onNotice={(message) => {
+                setError(null);
+                setNotice(message);
+              }}
+              onError={(message) => {
+                setNotice(null);
+                setError(message);
+              }}
+            />
 
             <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center gap-3">
@@ -469,12 +552,6 @@ function SettingsContent() {
         latitude={form?.latitude}
         longitude={form?.longitude}
         onSave={saveLocation}
-      />
-
-      <NewUserDialog
-        open={newUserOpen}
-        onOpenChange={setNewUserOpen}
-        onCreated={handleUserCreated}
       />
     </div>
   );

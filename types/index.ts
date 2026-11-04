@@ -3,4 +3,5 @@ export * from "./room";
 export * from "./experience";
 export * from "./riad";
 export * from "./user";
+export * from "./team";
 export * from "./api";
