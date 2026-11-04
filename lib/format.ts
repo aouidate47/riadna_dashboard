@@ -12,3 +12,9 @@ export const formatDate = (iso: string, pattern = "d MMM yyyy") => format(parseI
 
 export const pluralize = (count: number, singular: string, plural = `${singular}s`) =>
   `${count} ${count === 1 ? singular : plural}`;
+
+/** "2 adults · 1 child", or "2 guests" when there are no children. */
+export const formatParty = ({ guests, adults, children }: { guests: number; adults?: number; children?: number }) =>
+  children && adults !== undefined
+    ? `${pluralize(adults, "adult")} · ${pluralize(children, "child", "children")}`
+    : pluralize(guests, "guest");

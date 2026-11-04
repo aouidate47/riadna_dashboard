@@ -30,7 +30,7 @@ import { Select } from "@/components/ui/select";
 import { getRooms, listBookings, updateBookingStatus } from "@/lib/api";
 import { ALLOWED_TRANSITIONS } from "@/lib/booking-status";
 import { BOOKING_SOURCE_LABELS, BOOKING_STATUS_LABELS } from "@/lib/booking-labels";
-import { formatDate, formatMoney, pluralize } from "@/lib/format";
+import { formatDate, formatMoney, formatParty, pluralize } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type {
   Booking,
@@ -380,7 +380,7 @@ export default function Page() {
                           {formatDate(booking.checkIn, "d MMM")} → {formatDate(booking.checkOut, "d MMM yyyy")}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {pluralize(booking.guests, "guest")}
+                          {formatParty(booking)}
                         </p>
                       </td>
                       <td className="px-4 py-3">

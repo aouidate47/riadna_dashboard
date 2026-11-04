@@ -27,6 +27,9 @@ import { buildTakenNights, isStayFree, StayDatePicker } from "./stay-date-picker
 const SOURCES: BookingSource[] = ["direct", "booking.com", "airbnb.com", "riadna.ma", "phone", "walk-in"];
 const NEW_STATUSES: BookingStatus[] = ["PENDING", "CONFIRMED", "CHECKED_IN"];
 const NO_NIGHTS = new Set<string>();
+/** One-hour arrival slots, like the booking site offers ("14:00" = 14:00–15:00). */
+const ARRIVAL_TIMES = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
+const nextHour = (time: string) => `${String((Number(time.slice(0, 2)) + 1) % 24).padStart(2, "0")}:00`;
 
 /** Availability is loaded for a 12-month window starting the month before `month`. */
 function availabilityWindow(month: Date) {
@@ -99,7 +102,10 @@ function BookingForm({
   const [email, setEmail] = useState(booking?.email ?? "");
   const [phone, setPhone] = useState(booking?.phone ?? "");
   const [country, setCountry] = useState(booking?.country ?? "");
-  const [guests, setGuests] = useState(booking?.guests ?? 1);
+  const [adults, setAdults] = useState(booking?.adults ?? booking?.guests ?? 1);
+  const [children, setChildren] = useState(booking?.children ?? 0);
+  const [arrivalTime, setArrivalTime] = useState(booking?.arrivalTime ?? "");
+  const [specialRequests, setSpecialRequests] = useState(booking?.specialRequests ?? "");
   const [checkIn, setCheckIn] = useState(initialCheckIn);
   const [checkOut, setCheckOut] = useState(initialCheckOut);
   const [status, setStatus] = useState<BookingStatus>(booking?.status ?? "PENDING");
@@ -115,6 +121,7 @@ function BookingForm({
   const requestRef = useRef(0);
 
   const selectedRoom = rooms.find((room) => room.id === roomId);
+  const guests = adults + children;
   const nights = checkIn && checkOut && checkIn < checkOut ? nightsBetween(checkIn, checkOut) : 0;
   const takenNights = availability?.taken.get(roomId) ?? NO_NIGHTS;
   const selectionIsFree = isStayFree(takenNights, checkIn, checkOut);
@@ -205,7 +212,10 @@ function BookingForm({
     if (!selectionIsFree && status !== "CANCELLED") {
       return setError(`${selectedRoom.name} is already booked or blocked on some of these nights. Pick other dates.`);
     }
-    if (guests < 1 || guests > selectedRoom.capacity) {
+    if (!Number.isInteger(adults) || !Number.isInteger(children) || adults < 1 || children < 0) {
+      return setError("Enter at least 1 adult (children can be 0).");
+    }
+    if (guests > selectedRoom.capacity) {
       return setError(`${selectedRoom.name} sleeps ${pluralize(selectedRoom.capacity, "guest")} max.`);
     }
     if (!Number.isInteger(total) || !Number.isInteger(paid)) {
@@ -223,6 +233,10 @@ function BookingForm({
         phone: phone.trim(),
         country: country.trim(),
         guests,
+        adults,
+        children,
+        arrivalTime: arrivalTime || null,
+        specialRequests: specialRequests.trim(),
         checkIn,
         checkOut,
         status,
@@ -303,14 +317,42 @@ function BookingForm({
             placeholder="Morocco"
           />
         </div>
+        <div className="grid gap-4 sm:grid-cols-[9rem_1fr]">
+          <div className="grid content-start gap-2">
+            <Label htmlFor="booking-arrival">Arrival time</Label>
+            <Select
+              id="booking-arrival"
+              value={arrivalTime}
+              onChange={(event) => setArrivalTime(event.target.value)}
+            >
+              <option value="">Not set</option>
+              {ARRIVAL_TIMES.map((time) => (
+                <option key={time} value={time}>
+                  {time} – {nextHour(time)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="booking-requests">Guest requests</Label>
+            <Textarea
+              id="booking-requests"
+              value={specialRequests}
+              onChange={(event) => setSpecialRequests(event.target.value)}
+              placeholder="What the guest asked for (late arrival, cot, dietary needs…)"
+              maxLength={2000}
+              rows={2}
+            />
+          </div>
+        </div>
       </fieldset>
 
       <fieldset className="grid gap-4">
         <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Stay
         </legend>
-        <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
-          <div className="grid gap-2">
+        <div className="grid gap-4 sm:grid-cols-[1fr_5.5rem_5.5rem]">
+          <div className="grid content-start gap-2">
             <Label htmlFor="booking-room">Room</Label>
             <Select
               id="booking-room"
@@ -329,16 +371,28 @@ function BookingForm({
               </p>
             ) : null}
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="booking-guests">Guests</Label>
+          <div className="grid content-start gap-2">
+            <Label htmlFor="booking-adults">Adults</Label>
             <Input
-              id="booking-guests"
+              id="booking-adults"
               type="number"
               min={1}
               max={selectedRoom?.capacity}
-              value={guests}
-              onChange={(event) => setGuests(Number(event.target.value))}
+              value={adults}
+              onChange={(event) => setAdults(Number(event.target.value))}
             />
+          </div>
+          <div className="grid content-start gap-2">
+            <Label htmlFor="booking-children">Children</Label>
+            <Input
+              id="booking-children"
+              type="number"
+              min={0}
+              max={selectedRoom ? selectedRoom.capacity - 1 : undefined}
+              value={children}
+              onChange={(event) => setChildren(Number(event.target.value))}
+            />
+            <p className="text-xs text-muted-foreground">Ages 2–12</p>
           </div>
         </div>
         <div className="grid gap-2">
@@ -404,6 +458,9 @@ function BookingForm({
             </Select>
           </div>
         </div>
+        {booking && (booking.experiences.length > 0 || booking.roomTotal !== null) ? (
+          <BookingPriceBreakdown booking={booking} />
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="booking-total">Total (MAD)</Label>
@@ -430,12 +487,12 @@ function BookingForm({
           </div>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="booking-notes">Notes</Label>
+          <Label htmlFor="booking-notes">Staff notes</Label>
           <Textarea
             id="booking-notes"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Preferences, arrival time, special requests…"
+            placeholder="Only visible to your team"
           />
         </div>
       </fieldset>
@@ -450,5 +507,51 @@ function BookingForm({
         </Button>
       </DialogFooter>
     </form>
+  );
+}
+
+/** What the guest chose on the booking site, priced when they booked (read-only). */
+function BookingPriceBreakdown({ booking }: { booking: Booking }) {
+  const nights = nightsBetween(booking.checkIn, booking.checkOut);
+  const rows: { label: string; detail?: string; amount: number }[] = [
+    ...(booking.roomTotal !== null
+      ? [{ label: "Room", detail: pluralize(nights, "night"), amount: booking.roomTotal }]
+      : []),
+    ...booking.experiences.map((line) => ({
+      label: line.name,
+      detail:
+        line.pricing === "per_person"
+          ? `${formatMoney(line.unitPrice)} × ${pluralize(line.quantity, "guest")}`
+          : "per booking",
+      amount: line.total,
+    })),
+    ...(booking.touristTax > 0 ? [{ label: "Tourist tax", amount: booking.touristTax }] : []),
+  ];
+  const sum = rows.reduce((total, row) => total + row.amount, 0);
+
+  return (
+    <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5 text-sm">
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">Booked on the website</p>
+      <dl className="grid gap-1">
+        {rows.map((row, index) => (
+          <div key={index} className="flex items-baseline justify-between gap-3">
+            <dt className="min-w-0">
+              {row.label}
+              {row.detail ? <span className="text-xs text-muted-foreground"> · {row.detail}</span> : null}
+            </dt>
+            <dd className="shrink-0 tabular-nums">{formatMoney(row.amount)}</dd>
+          </div>
+        ))}
+        <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-border pt-1 font-medium">
+          <dt>Total</dt>
+          <dd className="tabular-nums">{formatMoney(sum)}</dd>
+        </div>
+      </dl>
+      {sum !== booking.total ? (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          The total below was changed to {formatMoney(booking.total)} after booking.
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -43,7 +43,7 @@ import { Input } from "@/components/ui/input";
 import { getBlockedPeriods, getBookings, getRooms, listBookings, updateBooking } from "@/lib/api";
 import { BOOKING_SOURCE_LABELS, BOOKING_STATUS_LABELS } from "@/lib/booking-labels";
 import { nightsBetween, toISODate, todayISO } from "@/lib/dates";
-import { formatDate, formatMoney, pluralize } from "@/lib/format";
+import { formatDate, formatMoney, formatParty, pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { BlockedPeriod, Booking, CreateBookingInput, Room } from "@/types";
 
@@ -740,7 +740,7 @@ function BookingLookupCard({
         </div>
         <div className="text-right text-sm">
           <p className="font-medium">{BOOKING_STATUS_LABELS[booking.status]}</p>
-          <p className="text-muted-foreground">{pluralize(booking.guests, "guest")}</p>
+          <p className="text-muted-foreground">{formatParty(booking)}</p>
           <p className="text-muted-foreground">{formatMoney(booking.total)} total</p>
           {due > 0 ? (
             <p className="font-medium text-gold">{formatMoney(due)} due</p>

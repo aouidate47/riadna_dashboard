@@ -88,7 +88,9 @@ export function buildSeed(now = new Date()) {
         code: `RDN-${Array.from({ length: 6 }, () => pick(CODE_ALPHABET)).join("")}`,
         riadId, roomId: room.id, guestName: g.name, email: `${slugify(g.name)}@${pick(MAIL_DOMAINS)}`,
         phone: `${g.dial} ${int(100, 999)} ${int(100, 999)} ${int(100, 999)}`, country: g.country, guests,
+        adults: guests, children: 0, arrivalTime: null, specialRequests: "",
         checkIn: ci, checkOut: co, status, source: pickSource(), total, paid,
+        roomTotal: null, experiencesTotal: 0, touristTax: 0, experiences: [],
         notes: rnd() < 0.25 ? pick(NOTES) : undefined,
         createdAt: (created > now ? now : created).toISOString(),
       });

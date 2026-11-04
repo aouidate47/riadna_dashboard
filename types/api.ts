@@ -23,9 +23,20 @@ export interface BookingFilters {
   sortDir?: "asc" | "desc";
 }
 
-/** The server sets id, code, riadId and the timestamps. */
-type ServerFields = "id" | "code" | "riadId" | "createdAt" | "updatedAt";
-export type CreateBookingInput = Omit<Booking, ServerFields | "paid"> & { paid?: number };
+/** The server sets these (the price breakdown and experiences come from website bookings). */
+type ServerFields =
+  | "id"
+  | "code"
+  | "riadId"
+  | "createdAt"
+  | "updatedAt"
+  | "roomTotal"
+  | "experiencesTotal"
+  | "touristTax"
+  | "experiences";
+/** Optional on create: adults defaults to guests, children to 0. */
+type PartyFields = "adults" | "children" | "arrivalTime" | "specialRequests" | "paid";
+export type CreateBookingInput = Omit<Booking, ServerFields | PartyFields> & Partial<Pick<Booking, PartyFields>>;
 export type UpdateBookingInput = Partial<Omit<Booking, ServerFields>>;
 
 /** revenueThisMonth is null for STAFF (the backend must do the same). */
