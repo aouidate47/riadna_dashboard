@@ -9,6 +9,7 @@ import {
   Ban,
   Banknote,
   BedDouble,
+  CalendarDays,
   CheckCircle2,
   EyeOff,
   Pencil,
@@ -22,6 +23,7 @@ import {
 import { useAuth } from "@/components/providers/auth-provider";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { BlockedDatesDialog } from "@/components/rooms/blocked-dates-dialog";
+import { IcalDialog } from "@/components/rooms/ical-dialog";
 import { RoomDialog } from "@/components/rooms/room-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,7 @@ export default function Page() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [roomDialog, setRoomDialog] = useState<{ room: Room | null } | null>(null);
   const [blockRoomId, setBlockRoomId] = useState<string | null>(null);
+  const [icalOpen, setIcalOpen] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -216,6 +219,10 @@ export default function Page() {
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
             <RefreshCw className={cn(loading && "animate-spin")} />
             Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIcalOpen(true)} disabled={!riad}>
+            <CalendarDays />
+            Calendar sync
           </Button>
           <Button size="sm" onClick={() => setRoomDialog({ room: null })} disabled={!dataReady}>
             <Plus />
@@ -522,6 +529,10 @@ export default function Page() {
         blocks={blockRoom ? blocks.filter((block) => block.roomId === blockRoom.id) : []}
         onChanged={handleBlocksChanged}
       />
+
+      {riad ? (
+        <IcalDialog open={icalOpen} onOpenChange={setIcalOpen} riadId={riad.id} riadName={riad.name} />
+      ) : null}
     </div>
   );
 }

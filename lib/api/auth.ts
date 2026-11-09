@@ -1,10 +1,15 @@
 import type { Riad, User } from "@/types";
 import { session } from "@/lib/auth/session";
-import { db } from "@/lib/mock/db";
-import { MOCK_USERS } from "@/lib/mock/data";
 import { ApiError } from "./errors";
 import { http } from "./http";
-import { pickMembership, toRiad, toUser, type LoginResponse, type PlatformProfile } from "./platform";
+import {
+  pickMembership,
+  toRiad,
+  toUser,
+  type LoginResponse,
+  type PlatformApplication,
+  type PlatformProfile,
+} from "./platform";
 import { getCurrentRiad } from "./riad";
 
 /** POST /auth/login, then GET /auth/profile to find the user's riad. */
@@ -83,12 +88,34 @@ export async function changePassword(currentPassword: string, newPassword: strin
   session.update({ mustChangePassword: false });
 }
 
-/** Mock-only helper for the "Demo accounts" box on /login. Delete when the real backend arrives. */
-export function getDemoAccounts() {
-  return MOCK_USERS.map((u) => ({
-    email: u.email,
-    password: u.password,
-    role: u.role,
-    riadName: db.riads.find((r) => r.id === u.riadId)?.name ?? "",
-  }));
+/** Every riad the signed-in user can switch to. GET /auth/profile */
+export async function getApplications(): Promise<PlatformApplication[]> {
+  const profile = await http<PlatformProfile>("/auth/profile");
+  return profile.applications.map((entry) => entry.application);
+}
+
+/** POST /auth/switch-riad — demo helper: re-points the session at another riad. */
+export async function switchRiad(riadId: string): Promise<{ user: User; riad: Riad }> {
+  const { user, riad } = await http<{ user: User; riad: Riad }>("/auth/switch-riad", {
+    method: "POST",
+    body: JSON.stringify({ riadId }),
+  });
+  session.update({ user, riad });
+  return { user, riad };
+}
+
+/** POST /auth/forgot-password — always resolves with the same message (no account enumeration). */
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  return http<{ message: string }>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim() }),
+  });
+}
+
+export async function getTwoFactor(): Promise<{ enabled: boolean }> {
+  return http<{ enabled: boolean }>("/auth/2fa");
+}
+
+export async function setTwoFactor(enabled: boolean): Promise<{ enabled: boolean }> {
+  return http<{ enabled: boolean }>("/auth/2fa", { method: "POST", body: JSON.stringify({ enabled }) });
 }

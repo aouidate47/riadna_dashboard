@@ -50,7 +50,7 @@ export function RiadHeroImageField({
   return (
     <div className="grid gap-2">
       <Label>Cover photo</Label>
-      <div className="relative aspect-[21/9] overflow-hidden rounded-md border border-border bg-muted">
+      <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-border bg-muted sm:aspect-[21/9]">
         {riad.heroImage ? (
           <div
             role="img"

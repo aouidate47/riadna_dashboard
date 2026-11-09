@@ -14,7 +14,7 @@ const body = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://riadna.ma"), 
+  metadataBase: new URL("https://riadna.ma/admin"), 
   title: {
     default: "Riadna | Riad management made simple",
     template: "%s | Riadna", 
@@ -23,24 +23,25 @@ export const metadata: Metadata = {
     "Riadna is the all-in-one dashboard for riad owners in Morocco: manage rooms, arrivals, departures and bookings in one calm place.",
   applicationName: "Riadna",
   keywords: ["riad", "riad management", "Marrakech", "bookings", "hospitality", "Morocco", "riadna", "riad system", "riad management system"],
-  authors: [{ name: "Yaran", url: "https://yaranagency.netlify.app" }],
-  creator: "Yaran",
+  authors: [{ name: "Creaovo", url: "https://creaovo.co" }],
+  creator: "Creaovo",
   icons: {
-    icon: "/riadna-logo.png",
-    apple: "/riadna-logo.png",
+    icon: "/riadna-favicon.png",
+    shortcut: "/riadna-favicon.png",
+    apple: "/riadna-favicon.png",
   },
   openGraph: {
     type: "website",
     siteName: "Riadna",
     title: "Riadna | Riad management made simple",
     description: "Your riad, running beautifully. Rooms, arrivals and bookings in one place.",
-    images: [{ url: "/riadna-logo.png", width: 500, height: 500, alt: "Riadna" }],
+    images: [{ url: "/riadna-logo-black.png", width: 500, height: 500, alt: "Riadna" }],
   },
   twitter: {
     card: "summary",
     title: "Riadna | Riad management made simple",
     description: "Your riad, running beautifully.",
-    images: ["/riadna-logo.png"],
+    images: ["/riadna-logo-black.png"],
   },
 };
 

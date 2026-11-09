@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { AlertCircle, CheckCircle2, KeyRound, Loader2, Save, UserRound } from "lucide-react";
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, Save, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { changePassword, getMyProfile, updateMyProfile, type MyProfile } from "@/lib/api";
+import { changePassword, getMyProfile, getTwoFactor, setTwoFactor, updateMyProfile, type MyProfile } from "@/lib/api";
 
 /** Open to every signed-in user (owners and staff). */
 export default function Page() {
@@ -66,6 +66,7 @@ export default function Page() {
         <div className="grid items-start gap-5 xl:grid-cols-2">
           <DetailsCard profile={profile} onSaved={setProfile} />
           <PasswordCard onChanged={() => setProfile((p) => (p ? { ...p, mustChangePassword: false } : p))} />
+          <SecurityCard />
         </div>
       )}
     </div>
@@ -241,9 +242,95 @@ function PasswordCard({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-function Card({ icon, title, text, children }: { icon: ReactNode; title: string; text: string; children: ReactNode }) {
+function SecurityCard() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getTwoFactor()
+      .then((result) => {
+        if (!cancelled) setEnabled(result.enabled);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load security settings.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function toggle() {
+    if (enabled === null) return;
+    const next = !enabled;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await setTwoFactor(next);
+      setEnabled(result.enabled);
+      setNotice(result.enabled ? "Two-factor authentication is now on." : "Two-factor authentication is off.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update security settings.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <section className="rounded-lg border border-border bg-card shadow-sm">
+    <Card icon={<ShieldCheck className="size-[18px]" />} title="Security" text="Protect your account with an extra step." className="xl:col-span-2">
+      <div className="grid gap-4 p-5">
+        {error ? <Message tone="error">{error}</Message> : null}
+        {notice ? <Message tone="success">{notice}</Message> : null}
+
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-md">
+            <p className="text-sm font-medium">Two-factor authentication</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Require a one-time code from your authenticator app in addition to your password. Demo mode simulates the
+              challenge.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled === true}
+            aria-label="Two-factor authentication"
+            onClick={() => void toggle()}
+            disabled={enabled === null || saving}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+              enabled ? "bg-primary" : "bg-muted-foreground/30"
+            } disabled:opacity-50`}
+          >
+            <span
+              className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${
+                enabled ? "left-[22px]" : "left-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function Card({
+  icon,
+  title,
+  text,
+  children,
+  className,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`rounded-lg border border-border bg-card shadow-sm ${className ?? ""}`}>
       <header className="flex items-center gap-3 border-b border-border px-5 py-4">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           {icon}

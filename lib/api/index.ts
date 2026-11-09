@@ -6,4 +6,5 @@ export * from "./guests";
 export * from "./riad";
 export * from "./team";
 export * from "./dashboard";
+export * from "./ops";
 export { ApiError, isApiError } from "./errors";
