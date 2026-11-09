@@ -73,7 +73,7 @@ The demo account box is shown in development only.
 | `npm start` | Start the production server |
 | `npm run lint` | Run ESLint |
 
-Data now comes from [platform-api](https://github.com/Elharfali8/platform-api). Set its URL in `.env.local` (`NEXT_PUBLIC_API_URL=http://localhost:3000`) and run the dashboard on port 4040 (`npm run dev -- -p 4040`). Tenancy and booking rules are enforced and tested there.
+Data now comes from [platform-api](https://github.com/Elharfali8/platform-api). Set its URL in `.env.local` (`NEXT_PUBLIC_API_URL=http://localhost:3000`) and run `npm run dev`: the dashboard always uses port 4040 (the API is on 3000, the booking site on 3030). Tenancy and booking rules are enforced and tested there.
 
 ## Stack
 

@@ -362,7 +362,7 @@ export default function LoginPage() {
         <footer className="relative flex shrink-0 items-center justify-between gap-3 pt-3 text-[11px] text-muted-foreground">
           <p>© 2026 Riadna. All rights reserved.</p>
           <a
-            href="https://creaovo.vercel.app/"
+            href="https://creaovo.co/"
             target="_blank"
             rel="noopener noreferrer"
             className="bg-gradient-to-r from-violet-500 to-cyan-400 bg-clip-text font-semibold text-transparent transition-opacity hover:opacity-80"

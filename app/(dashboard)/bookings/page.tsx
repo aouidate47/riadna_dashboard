@@ -1,19 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   AlertCircle,
+  BellRing,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  Globe,
   Loader2,
+  MessageSquareText,
   MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useNewBookings } from "@/components/providers/new-bookings-provider";
 import { BookingDialog } from "@/components/bookings/booking-dialog";
 import { StatusBadge } from "@/components/bookings/status-badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { getRooms, listBookings, updateBookingStatus } from "@/lib/api";
+import { getRooms, listBookings, updateBookingStatus, WEBSITE_SOURCE } from "@/lib/api";
 import { ALLOWED_TRANSITIONS } from "@/lib/booking-status";
 import { BOOKING_SOURCE_LABELS, BOOKING_STATUS_LABELS } from "@/lib/booking-labels";
 import { formatDate, formatMoney, formatParty, pluralize } from "@/lib/format";
@@ -66,6 +73,7 @@ interface DialogState {
 
 export default function Page() {
   const { user } = useAuth();
+  const { count: newOnlineCount, refresh: refreshNewOnline } = useNewBookings();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomsError, setRoomsError] = useState<string | null>(null);
   const [result, setResult] = useState<Paginated<Booking> | null>(null);
@@ -81,6 +89,8 @@ export default function Page() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** Row whose Cancel button was clicked once (a second click cancels). */
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,12 +150,14 @@ export default function Page() {
   }, [user?.id, search, status, source, roomId, sort, page, refreshKey]);
 
   const isFiltered = Boolean(search.trim()) || status !== "all" || source !== "all" || roomId !== "all";
+  const showingNewOnline = status === "PENDING" && source === WEBSITE_SOURCE;
   const roomsById = new Map(rooms.map((room) => [room.id, room]));
 
   function refresh() {
     setLoading(true);
     setError(null);
     setRefreshKey((key) => key + 1);
+    refreshNewOnline();
   }
 
   function resetFilters() {
@@ -155,6 +167,17 @@ export default function Page() {
     setSource("all");
     setRoomId("all");
     setSort("checkIn-desc");
+    setPage(1);
+  }
+
+  /** "Review them": pending website bookings, newest first. */
+  function showNewOnline() {
+    setLoading(true);
+    setSearch("");
+    setStatus("PENDING");
+    setSource(WEBSITE_SOURCE);
+    setRoomId("all");
+    setSort("createdAt-desc");
     setPage(1);
   }
 
@@ -176,9 +199,11 @@ export default function Page() {
     setLoading(true);
     if (wasNew) setPage(1);
     setRefreshKey((key) => key + 1);
+    refreshNewOnline();
   }
 
   async function changeStatus(booking: Booking, nextStatus: BookingStatus) {
+    setConfirmCancelId(null);
     setBusyId(booking.id);
     setError(null);
     setNotice(null);
@@ -187,6 +212,7 @@ export default function Page() {
       setNotice(`${booking.guestName} is now ${BOOKING_STATUS_LABELS[nextStatus].toLowerCase()}.`);
       setLoading(true);
       setRefreshKey((key) => key + 1);
+      refreshNewOnline();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update the booking status.");
     } finally {
@@ -221,6 +247,29 @@ export default function Page() {
           </Button>
         </div>
       </div>
+
+      {newOnlineCount && !showingNewOnline ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <BellRing className="size-4 shrink-0 text-primary" />
+          <p className="flex-1">
+            <span className="font-medium">
+              {pluralize(newOnlineCount, "new online booking")}
+            </span>{" "}
+            {newOnlineCount === 1 ? "is" : "are"} waiting for you to confirm or cancel.
+          </p>
+          <Button size="sm" onClick={showNewOnline}>
+            Review {newOnlineCount === 1 ? "it" : "them"}
+          </Button>
+        </div>
+      ) : null}
+
+      {showingNewOnline ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Globe className="size-4" />
+          Bookings made on your website that still need an answer, newest first. The guest sees the new status on
+          their confirmation page.
+        </p>
+      ) : null}
 
       <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1fr)_10rem_10rem_11rem_13rem]">
@@ -360,8 +409,19 @@ export default function Page() {
                   const room = roomsById.get(booking.roomId);
                   const transitions = ALLOWED_TRANSITIONS[booking.status];
                   const busy = busyId === booking.id;
+                  const online = booking.source === WEBSITE_SOURCE;
+                  const hasDetails =
+                    Boolean(booking.arrivalTime || booking.specialRequests) || booking.experiences.length > 0;
                   return (
-                    <tr key={booking.id} className="transition hover:bg-muted/30">
+                    <Fragment key={booking.id}>
+                    <tr
+                      className={cn(
+                        "transition hover:bg-muted/30",
+                        // The details row below belongs to this booking: no divider between them
+                        hasDetails && "border-b-0 [&>td]:pb-1.5",
+                        online && booking.status === "PENDING" && "bg-primary/[0.03]",
+                      )}
+                    >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
@@ -388,7 +448,14 @@ export default function Page() {
                         <p className="text-xs text-muted-foreground">{booking.country}</p>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {BOOKING_SOURCE_LABELS[booking.source]}
+                        {online ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            <Globe className="size-3" />
+                            Online
+                          </span>
+                        ) : (
+                          BOOKING_SOURCE_LABELS[booking.source]
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <p className="whitespace-nowrap font-medium">{formatMoney(booking.total)}</p>
@@ -402,6 +469,33 @@ export default function Page() {
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {busy ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+                          {booking.status === "PENDING" ? (
+                            <>
+                              <Button
+                                size="sm"
+                                className="h-8"
+                                onClick={() => void changeStatus(booking, "CONFIRMED")}
+                                disabled={busy}
+                              >
+                                <Check />
+                                Confirm
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-destructive hover:bg-destructive/5 hover:text-destructive"
+                                onClick={() =>
+                                  confirmCancelId === booking.id
+                                    ? void changeStatus(booking, "CANCELLED")
+                                    : setConfirmCancelId(booking.id)
+                                }
+                                onBlur={() => setConfirmCancelId((id) => (id === booking.id ? null : id))}
+                                disabled={busy}
+                              >
+                                {confirmCancelId === booking.id ? "Cancel booking?" : "Cancel"}
+                              </Button>
+                            </>
+                          ) : null}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -436,6 +530,14 @@ export default function Page() {
                         </div>
                       </td>
                     </tr>
+                    {hasDetails ? (
+                      <tr>
+                        <td colSpan={7} className="px-5 pb-3 pt-0">
+                          <BookingExtras booking={booking} />
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -505,6 +607,40 @@ export default function Page() {
     </div>
   );
 }
+
+/** What the guest added on the website: arrival time, experiences and their requests. */
+function BookingExtras({ booking }: { booking: Booking }) {
+  return (
+    <div className="ml-12 flex flex-wrap items-start gap-x-5 gap-y-1.5 text-xs">
+      {booking.arrivalTime ? (
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="size-3.5" />
+          Arrives {booking.arrivalTime}–{nextHour(booking.arrivalTime)}
+        </span>
+      ) : null}
+      {booking.experiences.length > 0 ? (
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <Sparkles className="size-3.5 text-gold" />
+          {booking.experiences.map((line) => (
+            <span key={line.id} className="rounded-full bg-muted px-2 py-0.5 font-medium">
+              {line.name}
+              {line.pricing === "per_person" ? ` ×${line.quantity}` : ""}
+              <span className="font-normal text-muted-foreground"> · {formatMoney(line.total)}</span>
+            </span>
+          ))}
+        </span>
+      ) : null}
+      {booking.specialRequests ? (
+        <span className="inline-flex min-w-0 max-w-full items-start gap-1.5">
+          <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+          <span className="italic">&ldquo;{booking.specialRequests}&rdquo;</span>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+const nextHour = (time: string) => `${String((Number(time.slice(0, 2)) + 1) % 24).padStart(2, "0")}:00`;
 
 function BookingsSkeleton() {
   return (

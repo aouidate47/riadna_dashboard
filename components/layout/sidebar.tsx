@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useNewBookings } from "@/components/providers/new-bookings-provider";
 import { cn } from "@/lib/utils";
 import { navForRole } from "./nav-items";
 
@@ -19,6 +20,7 @@ export function SidebarContent({
   compact?: boolean;
 }) {
   const { user, riad } = useAuth();
+  const { count: newBookings } = useNewBookings();
   const pathname = usePathname();
   const items = navForRole(user?.role);
 
@@ -42,14 +44,18 @@ export function SidebarContent({
         <ul className="space-y-1">
           {items.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
+            // New website bookings waiting to be confirmed
+            const badge = href === "/bookings" && newBookings ? newBookings : 0;
+            const badgeText = badge > 99 ? "99+" : String(badge);
+            const fullLabel = badge ? `${label} (${badge} new online)` : label;
             return (
               <li key={href}>
                 <Link
                   href={href}
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
-                  aria-label={compact ? label : undefined}
-                  title={compact ? label : undefined}
+                  aria-label={compact || badge ? fullLabel : undefined}
+                  title={compact ? fullLabel : undefined}
                   className={cn(
                     "relative flex items-center rounded-md text-sm font-medium transition-colors hover:bg-white/15 hover:text-white",
                     compact ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
@@ -59,6 +65,17 @@ export function SidebarContent({
                   {active && <span className="absolute inset-y-2 left-0 w-1 rounded-r bg-white" />}
                   <Icon className="size-[18px] shrink-0" />
                   {compact ? <span className="sr-only">{label}</span> : label}
+                  {badge ? (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "rounded-full bg-white px-1.5 text-[10px] font-semibold leading-4 text-primary tabular-nums",
+                        compact ? "absolute right-2 top-1 min-w-4 text-center" : "ml-auto",
+                      )}
+                    >
+                      {badgeText}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
             );

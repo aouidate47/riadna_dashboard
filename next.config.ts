@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   
   devIndicators: false,
-  // Lets phones/laptops on the same Wi-Fi open the dev server at http://192.168.110.9:4040.
-  allowedDevOrigins: ["192.168.110.9"],
+  // Lets phones/laptops on the same Wi-Fi open the dev server at http://192.168.1.45:4040.
+  allowedDevOrigins: ["192.168.1.45"],
   // Mock room photos come from picsum.photos; remove once real photo URLs exist.
   images: { remotePatterns: [{ protocol: "https", hostname: "picsum.photos" }] },
   cacheComponents: true,

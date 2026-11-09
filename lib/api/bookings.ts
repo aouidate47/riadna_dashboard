@@ -26,6 +26,15 @@ export async function getBookings(filters: { from: string; to: string; roomId?: 
 }
 
 /** Paginated list for the /bookings table. GET …/bookings */
+/** Bookings made by guests on the booking site arrive with this source. */
+export const WEBSITE_SOURCE = "riadna.ma" satisfies Booking["source"];
+
+/** How many website bookings are still PENDING (waiting for the riad to confirm or cancel). */
+export async function countNewOnlineBookings(): Promise<number> {
+  const { total } = await listBookings({ status: "PENDING", source: WEBSITE_SOURCE }, { page: 1, pageSize: 1 });
+  return total;
+}
+
 export async function listBookings(
   filters: BookingFilters = {},
   opts: { page?: number; pageSize?: number } = {},
