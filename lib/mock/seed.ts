@@ -8,6 +8,8 @@ type Draft = Omit<Booking, "id">;
 const MAIL_DOMAINS = ["gmail.com", "outlook.com", "yahoo.com", "hotmail.com", "icloud.com"];
 const SOURCES: [BookingSource, number][] = [["direct", 0.3], ["booking.com", 0.3], ["airbnb.com", 0.2], ["riadna.ma", 0.1], ["phone", 0.12], ["walk-in", 0.08]];
 
+const ROOM_PHOTOS = Array.from({ length: 7 }, (_, i) => `/rooms/room${i + 1}.jpg`);
+
 const slugify = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]+/g, ".").replace(/^\.|\.$/g, "");
 const round10 = (n: number) => Math.round(n / 10) * 10;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".split("");
@@ -36,7 +38,7 @@ export function buildSeed(now = new Date()) {
       const id = `${riadId}_room_${i + 1}`;
       return {
         id, riadId, name: r.name, capacity: r.capacity, price: r.price,
-        photos: [1, 2].map((k) => `https://picsum.photos/seed/${id}-${k}/800/600`),
+        photos: [ROOM_PHOTOS[i % ROOM_PHOTOS.length]],
         description: "",
         beds: r.capacity >= 3 ? "1 double bed, 1 single bed" : "1 double bed",
         size: 14 + r.capacity * 4,

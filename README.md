@@ -1,6 +1,6 @@
 # Riadna dashboard
 
-A Next.js dashboard for riad owners and staff to manage bookings, rooms, guests, and availability.
+Is a Next.js dashboard web app called riadna.ma/admin for riad owners and staff to manage bookings, rooms, guests, and availability and it got build by creaovo agency.
 
 ## Requirements
 
@@ -50,19 +50,6 @@ npm ci
 ```
 
 If installation still fails, check that `node -v` reports 20.9 or newer, then share the full `npm ci` error.
-
-## Demo accounts
-
-All demo accounts use the password `test1234`.
-
-| Role | Email |
-| --- | --- |
-| Owner | `owner@yasmine.ma` |
-| Staff | `staff@yasmine.ma` |
-| Owner | `owner@daranika.ma` |
-| Owner | `owner@riadzitoun.ma` |
-
-The demo account box is shown in development only.
 
 ## Scripts
 

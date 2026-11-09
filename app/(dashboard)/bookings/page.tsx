@@ -22,7 +22,10 @@ import {
 import { useAuth } from "@/components/providers/auth-provider";
 import { useNewBookings } from "@/components/providers/new-bookings-provider";
 import { BookingDialog } from "@/components/bookings/booking-dialog";
+import { CheckInDialog } from "@/components/bookings/check-in-dialog";
+import { PaymentsDialog } from "@/components/bookings/payments-dialog";
 import { StatusBadge } from "@/components/bookings/status-badge";
+import { printInvoice } from "@/lib/invoice";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,7 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { getRooms, listBookings, updateBookingStatus, WEBSITE_SOURCE } from "@/lib/api";
 import { ALLOWED_TRANSITIONS } from "@/lib/booking-status";
-import { BOOKING_SOURCE_LABELS, BOOKING_STATUS_LABELS } from "@/lib/booking-labels";
+import { BOOKING_SOURCE_LABELS, BOOKING_STATUS_LABELS, BOOKING_SYNC_LABELS, isExternalBooking } from "@/lib/booking-labels";
 import { formatDate, formatMoney, formatParty, pluralize } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type {
@@ -72,7 +75,7 @@ interface DialogState {
 }
 
 export default function Page() {
-  const { user } = useAuth();
+  const { user, riad } = useAuth();
   const { count: newOnlineCount, refresh: refreshNewOnline } = useNewBookings();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomsError, setRoomsError] = useState<string | null>(null);
@@ -88,6 +91,8 @@ export default function Page() {
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<Booking | null>(null);
+  const [checkInTarget, setCheckInTarget] = useState<Booking | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   /** Row whose Cancel button was clicked once (a second click cancels). */
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
@@ -454,8 +459,26 @@ export default function Page() {
                             Online
                           </span>
                         ) : (
-                          BOOKING_SOURCE_LABELS[booking.source]
+                          <p className="whitespace-nowrap text-foreground">
+                            {BOOKING_SOURCE_LABELS[booking.source]}
+                          </p>
                         )}
+                        {booking.externalReference ? (
+                          <p className="max-w-36 truncate font-mono text-xs" title={booking.externalReference}>
+                            Ref: {booking.externalReference}
+                          </p>
+                        ) : null}
+                        {isExternalBooking(booking) ? (
+                          <p
+                            className={cn(
+                              "mt-1 text-xs",
+                              booking.syncStatus === "error" ? "text-destructive" : "text-muted-foreground",
+                            )}
+                            title={booking.syncError ?? undefined}
+                          >
+                            {BOOKING_SYNC_LABELS[booking.syncStatus ?? "synced"]}
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <p className="whitespace-nowrap font-medium">{formatMoney(booking.total)}</p>
@@ -515,11 +538,23 @@ export default function Page() {
                               <DropdownMenuItem onSelect={() => openEditBooking(booking)}>
                                 Edit booking
                               </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setPaymentTarget(booking)}>
+                                Record payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => printInvoice({ booking, room, riad })}
+                              >
+                                Print invoice
+                              </DropdownMenuItem>
                               {transitions.length > 0 ? <DropdownMenuSeparator /> : null}
                               {transitions.map((nextStatus) => (
                                 <DropdownMenuItem
                                   key={nextStatus}
-                                  onSelect={() => changeStatus(booking, nextStatus)}
+                                  onSelect={() =>
+                                    nextStatus === "CHECKED_IN"
+                                      ? setCheckInTarget(booking)
+                                      : changeStatus(booking, nextStatus)
+                                  }
                                   className={nextStatus === "CANCELLED" ? "text-destructive" : undefined}
                                 >
                                   {STATUS_ACTION_LABELS[nextStatus]}
@@ -603,6 +638,30 @@ export default function Page() {
         rooms={rooms}
         defaults={dialog?.defaults}
         onSaved={handleSaved}
+      />
+
+      <PaymentsDialog
+        open={paymentTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setPaymentTarget(null);
+        }}
+        booking={paymentTarget}
+        room={paymentTarget ? roomsById.get(paymentTarget.roomId) : undefined}
+        riad={riad}
+        onChanged={refresh}
+      />
+
+      <CheckInDialog
+        open={checkInTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCheckInTarget(null);
+        }}
+        booking={checkInTarget}
+        onDone={() => {
+          setCheckInTarget(null);
+          setNotice("Guest checked in.");
+          refresh();
+        }}
       />
     </div>
   );

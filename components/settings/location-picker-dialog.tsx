@@ -108,7 +108,7 @@ function LocationPicker({
 
       const icon = L.divIcon({
         className: "",
-        html: '<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;background:#0f172a;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>',
+        html: '<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;background:#7c2d12;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>',
         iconSize: [26, 26],
         iconAnchor: [13, 26],
       });

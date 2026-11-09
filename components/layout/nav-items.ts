@@ -1,11 +1,16 @@
 import {
+  BarChart3,
   BedDouble,
   CalendarDays,
   ClipboardList,
+  History,
   LayoutDashboard,
+  MessageSquare,
+  Percent,
   Settings,
   Sparkles,
   Users,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -23,8 +28,13 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/bookings", label: "Bookings", icon: ClipboardList },
   { href: "/rooms", label: "Rooms", icon: BedDouble },
+  { href: "/housekeeping", label: "Housekeeping", icon: Wrench },
   { href: "/experiences", label: "Experiences", icon: Sparkles },
   { href: "/guests", label: "Guests", icon: Users },
+  { href: "/messages", label: "Messages", icon: MessageSquare },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/rates", label: "Rates & promos", icon: Percent, roles: ["OWNER"] },
+  { href: "/activity", label: "Activity", icon: History, roles: ["OWNER"] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["OWNER"] },
 ];
 

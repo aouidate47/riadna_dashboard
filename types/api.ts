@@ -33,7 +33,11 @@ type ServerFields =
   | "roomTotal"
   | "experiencesTotal"
   | "touristTax"
-  | "experiences";
+  | "experiences"
+  | "externalReference"
+  | "syncStatus"
+  | "syncError"
+  | "lastSyncedAt";
 /** Optional on create: adults defaults to guests, children to 0. */
 type PartyFields = "adults" | "children" | "arrivalTime" | "specialRequests" | "paid";
 export type CreateBookingInput = Omit<Booking, ServerFields | PartyFields> & Partial<Pick<Booking, PartyFields>>;

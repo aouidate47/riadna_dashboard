@@ -10,16 +10,16 @@ export function OccupancyChart({ data }: { data: OccupancyDay[] }) {
         <AreaChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
           <defs>
             <linearGradient id="occupancy-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ff3131" stopOpacity={0.28} />
-              <stop offset="95%" stopColor="#ff914d" stopOpacity={0} />
+              <stop offset="5%" stopColor="#7c2d12" stopOpacity={0.28} />
+              <stop offset="95%" stopColor="#9a3412" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8ef" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e3dbd0" />
           <XAxis
             dataKey="label"
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 12, fill: "#5c6278" }}
+            tick={{ fontSize: 12, fill: "#6b5d52" }}
             interval={1}
             dy={6}
           />
@@ -28,19 +28,19 @@ export function OccupancyChart({ data }: { data: OccupancyDay[] }) {
             ticks={[0, 25, 50, 75, 100]}
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 12, fill: "#5c6278" }}
+            tick={{ fontSize: 12, fill: "#6b5d52" }}
             tickFormatter={(value) => `${value}%`}
             width={44}
           />
           <Tooltip
-            cursor={{ stroke: "#ff3131", strokeOpacity: 0.2 }}
-            contentStyle={{ borderRadius: 8, borderColor: "#dfe2ea", fontSize: 12 }}
+            cursor={{ stroke: "#7c2d12", strokeOpacity: 0.2 }}
+            contentStyle={{ borderRadius: 8, borderColor: "#e3dbd0", fontSize: 12 }}
             formatter={(value) => [`${value}%`, "Occupancy"]}
           />
           <Area
             type="monotone"
             dataKey="occupancyPct"
-            stroke="#ff3131"
+            stroke="#7c2d12"
             strokeWidth={2}
             fill="url(#occupancy-fill)"
           />

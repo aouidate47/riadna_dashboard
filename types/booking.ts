@@ -1,5 +1,6 @@
 export type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
 export type BookingSource = "direct" | "booking.com" | "airbnb.com" | "riadna.ma" | "phone" | "walk-in";
+export type BookingSyncStatus = "synced" | "pending" | "error";
 
 /** Matches platform-api: GET /applications/:riadId/riadna/bookings */
 export interface Booking {
@@ -20,6 +21,12 @@ export interface Booking {
   checkOut: string; // YYYY-MM-DD, day the guest leaves
   status: BookingStatus;
   source: BookingSource;
+  /** Reference assigned by the OTA, direct website or booking platform. */
+  externalReference?: string | null;
+  /** Synchronization state managed by platform-api for externally created bookings. */
+  syncStatus?: BookingSyncStatus | null;
+  syncError?: string | null;
+  lastSyncedAt?: string | null;
   total: number; // MAD, whole dirhams
   // Breakdown of `total` for website bookings. roomTotal is null for bookings typed in the dashboard.
   roomTotal: number | null;

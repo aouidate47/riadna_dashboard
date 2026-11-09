@@ -5,3 +5,4 @@ export * from "./riad";
 export * from "./user";
 export * from "./team";
 export * from "./api";
+export * from "./ops";

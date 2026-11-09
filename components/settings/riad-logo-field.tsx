@@ -51,7 +51,7 @@ export function RiadLogoField({
     <div className="grid gap-2">
       <Label>Logo</Label>
       <div className="flex flex-wrap items-center gap-4">
-        <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+        <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted sm:size-20">
           {riad.logo ? (
             // Served by platform-api on any host, so a plain <img> instead of next/image (no remotePatterns needed).
             // eslint-disable-next-line @next/next/no-img-element

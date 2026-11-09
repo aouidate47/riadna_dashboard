@@ -32,7 +32,7 @@ export function SidebarContent({
           compact ? "justify-center px-2" : "gap-3 px-5",
         )}
       >
-        <Image src="/riadna-logo.png" alt="Riadna" width={500} height={500} priority className="h-12 w-auto shrink-0" />
+        <Image src="/riadna-logo-white.png" alt="Riadna" width={500} height={500} priority className="h-12 w-auto shrink-0" />
         {compact ? null : (
           <div className="min-w-0 leading-tight">
             <p className="truncate font-display text-base font-semibold text-white">{riad?.name ?? "Riadna"}</p>

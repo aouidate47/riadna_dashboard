@@ -98,9 +98,9 @@ export function TeamSection({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card shadow-sm">
-      <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <header className="flex items-center gap-3 border-b border-border/70 bg-muted/30 px-5 py-4">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Users className="size-[18px]" />
         </span>
         <div className="min-w-0 flex-1">
